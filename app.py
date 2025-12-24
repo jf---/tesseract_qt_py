@@ -350,8 +350,11 @@ class TesseractViewer(QMainWindow):
                 with path.open("r") as f:
                     data = json.load(f)
 
+                # Handle both formats: [...] or {"trajectory": [...]}
+                if isinstance(data, dict) and "trajectory" in data:
+                    data = data["trajectory"]
+
                 # Convert JSON to trajectory format
-                # Expected: list of waypoints with 'joints' dict and optional 'time'
                 trajectory = []
                 for wp_data in data:
                     class Waypoint:
