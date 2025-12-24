@@ -2,8 +2,8 @@
 
 ## Repository
 - GitHub: https://github.com/jf---/tesseract_qt_py
-- Branch: master
-- 101 tests passing
+- Branch: main
+- 109 tests passing
 
 ## CRITICAL: Plugin Setup
 
@@ -39,6 +39,7 @@ SRDF contains `<contact_managers_plugin_config>` that loads plugins.
 - Group States Editor
 - TCP Editor
 - Manipulation Widget
+- Cartesian Editor (XYZ + RPY sliders with IK)
 
 ### UI
 - Tabified docks
@@ -59,7 +60,6 @@ python app.py /path/to/robot.urdf /path/to/robot.srdf
 - Multiple Environments
 - Dockable log panel
 - **Interactive IK gimbal at tool frame** (drag to move robot via IK)
-- **XYZ + RPY sliders** alongside joint sliders for Cartesian TCP control
 
 ## Key API Notes
 - `env.setState(joint_dict)` - use dict, not `(list, list)`
