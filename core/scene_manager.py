@@ -105,12 +105,11 @@ class SceneManager:
         if self._env is None:
             return
 
-        # Set joint positions
-        for name, value in joint_values.items():
-            try:
-                self._env.setState([name], [value])
-            except Exception:
-                pass
+        # Set joint positions using dict overload
+        try:
+            self._env.setState(joint_values)
+        except Exception as e:
+            print(f"setState error: {e}")
 
         self.update_from_state(self._env.getState())
         self.renderer.GetRenderWindow().Render()
