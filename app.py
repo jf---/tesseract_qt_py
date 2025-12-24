@@ -27,8 +27,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
 from tesseract_robotics.tesseract_environment import Environment
-from tesseract_robotics.tesseract_common import GeneralResourceLocator, FilesystemPath
+from tesseract_robotics.tesseract_common import GeneralResourceLocator, FilesystemPath, CollisionMarginData
 from tesseract_robotics.tesseract_scene_graph import JointType
+from tesseract_robotics.tesseract_collision import ContactRequest, ContactResultMap, ContactResultVector, ContactTestType
 
 from widgets.render_widget import RenderWidget
 from widgets.joint_slider import JointSliderWidget
@@ -36,6 +37,7 @@ from widgets.scene_tree import SceneTreeWidget
 from widgets.ik_widget import IKWidget
 from widgets.info_panel import RobotInfoPanel
 from widgets.trajectory_player import TrajectoryPlayerWidget
+from widgets.contact_compute_widget import ContactComputeWidget
 from core.state_manager import StateManager
 
 
@@ -83,6 +85,11 @@ class TesseractViewer(QMainWindow):
         self.traj_dock.setWidget(self.traj_player)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.traj_dock)
 
+        self.contact_dock = QDockWidget("Contact Checker", self)
+        self.contact_widget = ContactComputeWidget()
+        self.contact_dock.setWidget(self.contact_widget)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.contact_dock)
+
         self.setStatusBar(QStatusBar())
 
         # Menu
@@ -127,6 +134,7 @@ class TesseractViewer(QMainWindow):
         view_menu.addAction(self.ik_dock.toggleViewAction())
         view_menu.addAction(self.info_dock.toggleViewAction())
         view_menu.addAction(self.traj_dock.toggleViewAction())
+        view_menu.addAction(self.contact_dock.toggleViewAction())
         view_menu.addSeparator()
         view_menu.addAction("Show Workspace...", self._show_workspace)
         view_menu.addAction("Clear Workspace", self._clear_workspace)
@@ -142,6 +150,7 @@ class TesseractViewer(QMainWindow):
         self.ik_widget.solutionFound.connect(self.joints.set_values)
         self.ik_widget.targetPoseSet.connect(lambda pose: (self.render.scene.show_ik_target(pose), self.render.render()))
         self.traj_player.frameChanged.connect(self._on_trajectory_frame_changed)
+        self.contact_widget.btn_compute.clicked.connect(self._compute_contacts)
 
         # Keyboard shortcuts
         self._setup_shortcuts()
@@ -464,6 +473,58 @@ class TesseractViewer(QMainWindow):
             self.statusBar().showMessage("Workspace cleared")
         except Exception as e:
             logger.exception(f"Clear workspace failed: {e}")
+            QMessageBox.critical(self, "Error", str(e))
+
+    def _compute_contacts(self):
+        """Compute and visualize contact results."""
+        if not self._env:
+            QMessageBox.information(self, "Info", "Load URDF first")
+            return
+
+        try:
+            # Get discrete contact manager
+            manager = self._env.getDiscreteContactManager()
+            manager.setActiveCollisionObjects(self._env.getActiveLinkNames())
+
+            # Set margin from widget
+            margin = CollisionMarginData(self.contact_widget.contact_threshold.value())
+            manager.setCollisionMarginData(margin)
+
+            # Update transforms
+            state = self._env.getState()
+            manager.setCollisionObjectsTransform(state.link_transforms)
+
+            # Map contact test type from widget
+            test_type_map = {
+                "First": ContactTestType.FIRST,
+                "Closest": ContactTestType.CLOSEST,
+                "All": ContactTestType.ALL,
+            }
+            test_type = test_type_map[self.contact_widget.contact_test_type.currentText()]
+
+            # Create contact request
+            request = ContactRequest(test_type)
+
+            # Execute check
+            result_map = ContactResultMap()
+            manager.contactTest(result_map, request)
+
+            # Flatten results
+            results = ContactResultVector()
+            result_map.flattenMoveResults(results)
+
+            logger.info(f"Found {len(results)} contacts")
+            for i, contact in enumerate(results):
+                logger.debug(f"Contact {i}: {contact.link_names[0]} <-> {contact.link_names[1]}, dist={contact.distance:.4f}")
+
+            # Visualize
+            self.render.scene.visualize_contacts(results)
+            self.render.render()
+
+            self.statusBar().showMessage(f"Found {len(results)} contact(s)")
+
+        except Exception as e:
+            logger.exception(f"Contact computation failed: {e}")
             QMessageBox.critical(self, "Error", str(e))
 
     def _setup_shortcuts(self):
