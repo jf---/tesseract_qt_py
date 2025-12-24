@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import vtk
+from loguru import logger
 
 from tesseract_robotics import tesseract_common
 from tesseract_robotics import tesseract_geometry as tg
@@ -141,7 +142,7 @@ class SceneManager:
         try:
             self._env.setState(joint_values)
         except Exception as e:
-            print(f"setState error: {e}")
+            logger.warning(f"setState error: {e}")
 
         self.update_from_state(self._env.getState())
         rw = self.renderer.GetRenderWindow()
@@ -285,7 +286,7 @@ class SceneManager:
                     return actor
 
         except Exception as e:
-            print(f"Failed to create mesh actor: {e}")
+            logger.debug(f"Failed to create mesh actor: {e}")
 
         return None
 
@@ -320,7 +321,7 @@ class SceneManager:
             return actor
 
         except Exception as e:
-            print(f"Failed to create compound mesh actor: {e}")
+            logger.debug(f"Failed to create compound mesh actor: {e}")
 
         return None
 
@@ -675,7 +676,7 @@ class SceneManager:
             state = self._env.getState()
             return state.link_transforms.get(tcp_link)
         except Exception as e:
-            print(f"FK failed: {e}")
+            logger.debug(f"FK failed: {e}")
             return None
 
     def show_tcp_marker(self, pose: tesseract_common.Isometry3d,
@@ -775,7 +776,7 @@ class SceneManager:
             self._fk_actors[chain_id] = [actor]
 
         except Exception as e:
-            print(f"FK chain viz failed: {e}")
+            logger.debug(f"FK chain viz failed: {e}")
 
     def clear_fk_viz(self):
         """Clear all FK visualization actors."""

@@ -84,26 +84,32 @@ class ManipulationWidget(QWidget):
 
         # Group Name
         self.group_combo_box = QComboBox()
+        self.group_combo_box.setToolTip("Kinematic group for IK solving (from SRDF)")
         form_layout.addRow(QLabel("Group Name:"), self.group_combo_box)
 
         # Working Frame
         self.working_frame_combo_box = QComboBox()
+        self.working_frame_combo_box.setToolTip("Reference frame for motion commands")
         form_layout.addRow(QLabel("Working Frame:"), self.working_frame_combo_box)
 
         # TCP Frame
         self.tcp_combo_box = QComboBox()
+        self.tcp_combo_box.setToolTip("Tool Center Point link for pose display")
         form_layout.addRow(QLabel("TCP Frame:"), self.tcp_combo_box)
 
         # TCP Offset
         self.tcp_offset_combo_box = QComboBox()
+        self.tcp_offset_combo_box.setToolTip("Additional offset from TCP link")
         form_layout.addRow(QLabel("TCP Offset:"), self.tcp_offset_combo_box)
 
         # State
         self.state_combo_box = QComboBox()
+        self.state_combo_box.setToolTip("Named joint configurations from SRDF")
         form_layout.addRow(QLabel("State:"), self.state_combo_box)
 
         # Reload button
         self.reload_push_button = QPushButton("Reload")
+        self.reload_push_button.setToolTip("Reload environment from files")
         form_layout.addRow(QLabel(""), self.reload_push_button)
 
         layout.addWidget(frame)

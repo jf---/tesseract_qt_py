@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import numpy as np
+from loguru import logger
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (
     QWidget,
@@ -159,7 +160,7 @@ class IKWidget(QWidget):
                             self.link_combo.clear()
                             self.link_combo.addItems(tip_names)
         except Exception as e:
-            print(f"Kinematic group unavailable (using numerical IK): {e}")
+            logger.debug(f"Kinematic group unavailable (using numerical IK): {e}")
             self._kin_group = None
             # Set tool0 as default TCP if it exists
             if "tool0" in self._link_names:
@@ -266,7 +267,7 @@ class IKWidget(QWidget):
         except Exception as e:
             self.status_label.setText(f"Error: {str(e)}")
             self.status_label.setStyleSheet("color: red;")
-            print(f"IK solve error: {e}")
+            logger.error(f"IK solve error: {e}")
             import traceback
             traceback.print_exc()
 
@@ -367,7 +368,7 @@ class IKWidget(QWidget):
             self.yaw_spin.setValue(float(rpy[2]))
 
         except Exception as e:
-            print(f"Failed to set target from FK: {e}")
+            logger.debug(f"Failed to set target from FK: {e}")
 
     def _plan_motion(self):
         """Request motion plan to target pose."""
@@ -461,6 +462,6 @@ class IKWidget(QWidget):
             self.current_tcp_rpy_label.setText(f"RPY (deg): {roll_deg:.2f}, {pitch_deg:.2f}, {yaw_deg:.2f}")
 
         except Exception as e:
-            print(f"Failed to update current TCP pose: {e}")
+            logger.debug(f"Failed to update current TCP pose: {e}")
             self.current_tcp_xyz_label.setText("XYZ: -")
             self.current_tcp_rpy_label.setText("RPY (deg): -")

@@ -73,6 +73,29 @@ class TesseractViewer(QMainWindow):
         self.state_mgr = StateManager()
         self._setup()
         self._setup_status_logging()
+        self._restore_window_state()
+
+    def closeEvent(self, event):
+        """Clean up resources on window close."""
+        # Stop trajectory player timer
+        if hasattr(self, 'traj_player') and self.traj_player._timer.isActive():
+            self.traj_player._timer.stop()
+
+        # Save window state
+        self._settings.setValue("geometry", self.saveGeometry())
+        self._settings.setValue("windowState", self.saveState())
+
+        # Accept the close event
+        event.accept()
+
+    def _restore_window_state(self):
+        """Restore window geometry and state from settings."""
+        geometry = self._settings.value("geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+        state = self._settings.value("windowState")
+        if state:
+            self.restoreState(state)
 
     def _setup_status_logging(self):
         """Setup loguru to also show messages in status bar with copy context menu."""

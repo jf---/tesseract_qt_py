@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import numpy as np
+from loguru import logger
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget,
@@ -195,4 +196,4 @@ class RobotInfoPanel(QWidget):
                 self.tcp_rpy_label.setText("RPY: -")
 
         except Exception as e:
-            print(f"Failed to update state: {e}")
+            logger.debug(f"Failed to update state: {e}")

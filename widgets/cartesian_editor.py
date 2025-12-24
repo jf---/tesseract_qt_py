@@ -84,9 +84,17 @@ class CartesianEditorWidget(QWidget):
         min_val: float, max_val: float, default: float
     ) -> tuple[QSlider, QDoubleSpinBox]:
         """Create a slider + spinbox pair for an axis."""
+        # Axis names for tooltips
+        axis_names = {"X": "X position", "Y": "Y position", "Z": "Z position",
+                      "R": "Roll (rotation about X)", "P": "Pitch (rotation about Y)",
+                      "Y": "Yaw (rotation about Z)"}
+        unit = "m" if label in ("X", "Y", "Z") else "deg"
+        tooltip = f"{axis_names.get(label, label)}\nRange: [{min_val:.1f}, {max_val:.1f}] {unit}"
+
         # Label
         lbl = QLabel(f"{label}:")
         lbl.setFixedWidth(20)
+        lbl.setToolTip(tooltip)
         layout.addWidget(lbl, row, 0)
 
         # Slider (integer, scaled by 1000 for precision)
@@ -94,6 +102,7 @@ class CartesianEditorWidget(QWidget):
         slider.setRange(int(min_val * 1000), int(max_val * 1000))
         slider.setValue(int(default * 1000))
         slider.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        slider.setToolTip(tooltip)
         layout.addWidget(slider, row, 1)
 
         # Spinbox
@@ -103,6 +112,7 @@ class CartesianEditorWidget(QWidget):
         spin.setSingleStep(0.01 if abs(max_val) <= 10 else 1.0)
         spin.setValue(default)
         spin.setFixedWidth(80)
+        spin.setToolTip(tooltip)
         layout.addWidget(spin, row, 2)
 
         # Connect slider <-> spinbox
