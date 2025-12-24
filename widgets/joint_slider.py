@@ -160,8 +160,9 @@ class JointSliderWidget(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-        # Add new sliders
-        for name, (lower, upper, value) in joints.items():
+        # Add new sliders (sorted by name)
+        for name in sorted(joints.keys()):
+            lower, upper, value = joints[name]
             slider = JointSlider(name, lower, upper, value)
             slider.valueChanged.connect(self._on_joint_changed)
             self.sliders[name] = slider
@@ -194,7 +195,8 @@ class JointSliderWidget(QWidget):
             group_layout.setContentsMargins(4, 4, 4, 4)
             group_layout.setSpacing(2)
 
-            for name, (lower, upper, value) in joints.items():
+            for name in sorted(joints.keys()):
+                lower, upper, value = joints[name]
                 slider = JointSlider(name, lower, upper, value)
                 slider.valueChanged.connect(self._on_joint_changed)
                 self.sliders[name] = slider

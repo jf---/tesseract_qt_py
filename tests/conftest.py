@@ -23,7 +23,14 @@ def vtk_qt_setup():
     yield
 
 
-# pytest-qt provides qapp fixture automatically
+@pytest.fixture(scope="session")
+def qapp():
+    """Qt application fixture."""
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    yield app
 
 
 @pytest.fixture
