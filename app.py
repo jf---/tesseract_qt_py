@@ -375,9 +375,11 @@ class TesseractViewer(QMainWindow):
     def _on_trajectory_frame_changed(self, frame_idx: int):
         """Update joint values when trajectory frame changes."""
         waypoint = self.traj_player.get_waypoint()
-        if waypoint and hasattr(waypoint, 'joints'):
-            # Update joint sliders with waypoint values
-            self.joints.set_values(waypoint.joints)
+        if waypoint:
+            # Handle both dict and object waypoints
+            joints = waypoint.get('joints') if isinstance(waypoint, dict) else getattr(waypoint, 'joints', None)
+            if joints:
+                self.joints.set_values(joints)
 
     def _export_screenshot(self):
         """Export screenshot as PNG."""
