@@ -223,14 +223,22 @@ class TesseractViewer(QMainWindow):
         except Exception as e:
             logger.debug(f"failed to get TCP from SRDF: {e}")
 
-        # fallback: use last link in scene graph
+        # fallback: look for common TCP link names
         try:
             sg = self._env.getSceneGraph()
-            links = [link.getName() for link in sg.getLinks()]
-            if links:
-                return links[-1]
+            link_names = {link.getName() for link in sg.getLinks()}
+            # Common TCP/tool link names in priority order
+            for candidate in ["tool0", "tool_link", "tcp", "ee_link", "end_effector", "flange"]:
+                if candidate in link_names:
+                    return candidate
+            # Try finding tip of chain (link with no child joints)
+            child_links = {j.child_link_name for j in sg.getJoints()}
+            parent_links = {j.parent_link_name for j in sg.getJoints()}
+            tips = child_links - parent_links  # links that are children but not parents
+            if tips:
+                return sorted(tips)[-1]  # return last alphabetically (often tool0, link_6, etc)
         except Exception as e:
-            logger.debug(f"failed to get last link: {e}")
+            logger.debug(f"failed to detect TCP: {e}")
 
         return None
 

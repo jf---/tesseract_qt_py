@@ -161,8 +161,12 @@ class RobotInfoPanel(QWidget):
                 if item:
                     item.setText(f"{value:.4f}")
 
-        # Update TCP if environment available
+        # Update TCP - set state first to ensure transforms are current
         if self._env:
+            try:
+                self._env.setState(joint_values)
+            except Exception:
+                pass
             self.update_state()
 
     def update_state(self):
