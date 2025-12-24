@@ -840,7 +840,7 @@ class TesseractViewer(QMainWindow):
                 self.task_composer_widget.log(f"Using config: {config_path}")
 
                 # Get current TCP pose as target
-                tcp_link = self.info_panel.tcp_link if hasattr(self.info_panel, 'tcp_link') else None
+                tcp_link = getattr(self.info_panel, '_tcp_link', None)
                 if not tcp_link:
                     self.task_composer_widget.log("Error: No TCP link detected")
                     self.statusBar().showMessage("No TCP link detected")

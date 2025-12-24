@@ -44,13 +44,15 @@ class TestJointSliderSignals:
 
         spy = SignalSpy()
         w.jointValueChanged.connect(spy.slot)
-        w.sliders["j1"].spinbox.setValue(0.5)
+        # Spinbox displays degrees, set 30 degrees (~0.5236 radians)
+        w.sliders["j1"].spinbox.setValue(30.0)
 
         # verify signal emitted
         assert len(spy) == 1
-        # verify signal payload: (name, value)
+        # verify signal payload: (name, value in radians)
         assert spy[0][0] == "j1"
-        assert abs(spy[0][1] - 0.5) < 0.001
+        import math
+        assert abs(spy[0][1] - math.radians(30.0)) < 0.001
 
     def test_joint_values_changed_signal_emission(self, qapp):
         """test jointValuesChanged signal emitted with dict of all joint values."""
@@ -61,16 +63,18 @@ class TestJointSliderSignals:
 
         spy = SignalSpy()
         w.jointValuesChanged.connect(spy.slot)
-        w.sliders["j1"].spinbox.setValue(0.5)
+        # Spinbox displays degrees, set 30 degrees
+        w.sliders["j1"].spinbox.setValue(30.0)
 
         # verify signal emitted
         assert len(spy) == 1
-        # verify signal payload: dict with all joint values
+        # verify signal payload: dict with all joint values in radians
         values = spy[0][0]
         assert isinstance(values, dict)
         assert "j1" in values
         assert "j2" in values
-        assert abs(values["j1"] - 0.5) < 0.001
+        import math
+        assert abs(values["j1"] - math.radians(30.0)) < 0.001
         assert values["j2"] == 0.0
 
     def test_joint_value_changed_via_spinbox(self, qapp):
@@ -82,11 +86,13 @@ class TestJointSliderSignals:
 
         spy = SignalSpy()
         w.jointValueChanged.connect(spy.slot)
-        w.sliders["j1"].spinbox.setValue(0.75)
+        # Spinbox displays degrees, set 45 degrees
+        w.sliders["j1"].spinbox.setValue(45.0)
 
         assert len(spy) == 1
         assert spy[0][0] == "j1"
-        assert abs(spy[0][1] - 0.75) < 0.001
+        import math
+        assert abs(spy[0][1] - math.radians(45.0)) < 0.001
 
     def test_joint_value_changed_via_slider(self, qapp):
         """test signal emitted when slider value changes."""
