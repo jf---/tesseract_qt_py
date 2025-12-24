@@ -314,7 +314,16 @@ class TesseractViewer(QMainWindow):
         """Load robot from URDF."""
         try:
             logger.info(f"Loading URDF: {urdf}")
-            self._paths = (Path(urdf), Path(srdf) if srdf else None)
+            urdf_path = Path(urdf)
+
+            # Auto-detect SRDF if not provided
+            if not srdf:
+                auto_srdf = urdf_path.with_suffix(".srdf")
+                if auto_srdf.exists():
+                    srdf = auto_srdf
+                    logger.info(f"Auto-detected SRDF: {srdf}")
+
+            self._paths = (urdf_path, Path(srdf) if srdf else None)
             self._env = Environment()
             loc = GeneralResourceLocator()
 

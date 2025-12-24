@@ -196,6 +196,9 @@ class SceneManager:
         elif geom_type in (GT.MESH, GT.CONVEX_MESH, GT.POLYGON_MESH):
             return self._create_mesh_actor(geometry)
 
+        elif geom_type == GT.COMPOUND_MESH:
+            return self._create_compound_mesh_actor(geometry)
+
         if source is None:
             return None
 
@@ -283,6 +286,41 @@ class SceneManager:
 
         except Exception as e:
             print(f"Failed to create mesh actor: {e}")
+
+        return None
+
+    def _create_compound_mesh_actor(self, geometry) -> vtk.vtkActor | None:
+        """Create actor from compound mesh geometry (multiple meshes combined)."""
+        try:
+            meshes = geometry.getMeshes()
+            if not meshes:
+                return None
+
+            append = vtk.vtkAppendPolyData()
+
+            for mesh in meshes:
+                # Each mesh has vertices and faces
+                vertices = mesh.getVertices() if hasattr(mesh, 'getVertices') else None
+                faces = mesh.getFaces() if hasattr(mesh, 'getFaces') else None
+
+                if vertices is not None and len(vertices) > 0:
+                    polydata = self._vertices_faces_to_polydata(vertices, faces)
+                    if polydata is not None:
+                        append.AddInputData(polydata)
+
+            append.Update()
+
+            if append.GetOutput().GetNumberOfPoints() == 0:
+                return None
+
+            mapper = vtk.vtkPolyDataMapper()
+            mapper.SetInputConnection(append.GetOutputPort())
+            actor = vtk.vtkActor()
+            actor.SetMapper(mapper)
+            return actor
+
+        except Exception as e:
+            print(f"Failed to create compound mesh actor: {e}")
 
         return None
 

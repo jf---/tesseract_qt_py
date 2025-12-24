@@ -156,6 +156,62 @@ def test_mesh_geometry_loading():
     assert len(unique_positions) >= 5, f"Expected 5+ distinct positions, got {len(unique_positions)}"
 
 
+def test_compound_mesh_geometry():
+    """Test COMPOUND_MESH geometry (used by Kuka iiwa).
+
+    Verifies:
+    - COMPOUND_MESH geometries are properly loaded
+    - Multiple sub-meshes are combined
+    - No crashes on complex mesh structures
+    """
+    import vtk
+    import tesseract_robotics
+    from core.scene_manager import SceneManager
+    from tesseract_robotics.tesseract_environment import Environment
+    from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_geometry import GeometryType as GT
+
+    support_dir = Path(tesseract_robotics.get_tesseract_support_path())
+    urdf = support_dir / "urdf" / "lbr_iiwa_14_r820.urdf"
+
+    if not urdf.exists():
+        pytest.skip("iiwa URDF not found in tesseract_support")
+
+    env = Environment()
+    loc = GeneralResourceLocator()
+    assert env.init(str(urdf), loc), f"Failed to load {urdf}"
+
+    # Verify iiwa uses COMPOUND_MESH
+    sg = env.getSceneGraph()
+    compound_links = []
+    for link in sg.getLinks():
+        for v in link.visual:
+            if v.geometry.getType() == GT.COMPOUND_MESH:
+                compound_links.append(link.getName())
+                break
+
+    assert len(compound_links) >= 5, f"Expected 5+ COMPOUND_MESH links, got {len(compound_links)}"
+
+    # Load into SceneManager - should not crash
+    renderer = vtk.vtkRenderer()
+    scene = SceneManager(renderer)
+    scene.load_environment(env)
+
+    # Verify actors were created for compound mesh links
+    for link in compound_links:
+        assert link in scene.link_actors, f"Missing actor for compound mesh: {link}"
+        actors = scene.link_actors[link]
+        assert len(actors) > 0, f"No actors for compound mesh: {link}"
+
+        # Check actor has valid geometry
+        for actor in actors:
+            mapper = actor.GetMapper()
+            assert mapper is not None, f"No mapper for {link}"
+            polydata = mapper.GetInput()
+            assert polydata is not None, f"No polydata for {link}"
+            assert polydata.GetNumberOfPoints() > 0, f"Empty geometry for {link}"
+
+
 def test_scene_manager_update_joints():
     """Test SceneManager updates joint values."""
     import vtk
