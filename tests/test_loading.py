@@ -93,6 +93,69 @@ def test_scene_manager_load():
     assert "tool0" in scene.link_actors
 
 
+def test_mesh_geometry_loading():
+    """Test all mesh geometries are loaded with valid VTK polydata.
+
+    Verifies:
+    - All mesh links have VTK actors created
+    - Actors have valid geometry (non-zero points)
+    - Actors have distinct positions (not all at origin)
+    """
+    import vtk
+    from core.scene_manager import SceneManager
+    from tesseract_robotics.tesseract_environment import Environment
+    from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_geometry import GeometryType as GT
+
+    urdf = FIXTURES / "abb_irb2400.urdf"
+    env = Environment()
+    loc = GeneralResourceLocator()
+    env.init(str(urdf), loc)
+
+    # Count mesh visuals in scene graph
+    sg = env.getSceneGraph()
+    mesh_links = []
+    for link in sg.getLinks():
+        for v in link.visual:
+            if v.geometry.getType() in (GT.MESH, GT.CONVEX_MESH, GT.POLYGON_MESH):
+                mesh_links.append(link.getName())
+                break
+
+    assert len(mesh_links) >= 7, f"Expected 7+ mesh links, got {len(mesh_links)}"
+
+    # Load into SceneManager
+    renderer = vtk.vtkRenderer()
+    scene = SceneManager(renderer)
+    scene.load_environment(env)
+
+    # Verify all mesh links have actors
+    for link in mesh_links:
+        assert link in scene.link_actors, f"Missing actor for mesh link: {link}"
+        actors = scene.link_actors[link]
+        assert len(actors) > 0, f"No actors for mesh link: {link}"
+
+        # Check actor has valid geometry
+        for actor in actors:
+            mapper = actor.GetMapper()
+            assert mapper is not None, f"No mapper for {link}"
+            polydata = mapper.GetInput()
+            assert polydata is not None, f"No polydata for {link}"
+            assert polydata.GetNumberOfPoints() > 0, f"No points in {link}"
+
+    # Verify actors have distinct bounds (not all overlapping)
+    centers = []
+    for link in mesh_links:
+        for actor in scene.link_actors[link]:
+            centers.append(actor.GetCenter())
+
+    # At least 5 unique positions (some tolerance for nearby links)
+    unique_positions = set()
+    for c in centers:
+        rounded = (round(c[0], 1), round(c[1], 1), round(c[2], 1))
+        unique_positions.add(rounded)
+    assert len(unique_positions) >= 5, f"Expected 5+ distinct positions, got {len(unique_positions)}"
+
+
 def test_scene_manager_update_joints():
     """Test SceneManager updates joint values."""
     import vtk
