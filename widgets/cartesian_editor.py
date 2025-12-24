@@ -7,13 +7,11 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QHBoxLayout,
     QGridLayout,
     QGroupBox,
     QLabel,
     QDoubleSpinBox,
     QSlider,
-    QPushButton,
     QSizePolicy,
 )
 from PySide6.QtCore import Qt
@@ -24,8 +22,6 @@ class CartesianEditorWidget(QWidget):
 
     # Emitted when any value changes: (x, y, z, roll, pitch, yaw)
     poseChanged = Signal(float, float, float, float, float, float)
-    # Emitted when user wants to apply IK
-    applyIKRequested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -81,15 +77,6 @@ class CartesianEditorWidget(QWidget):
         )
 
         layout.addWidget(orientation_group)
-
-        # Apply IK button
-        btn_layout = QHBoxLayout()
-        self.apply_btn = QPushButton("Apply IK")
-        self.apply_btn.clicked.connect(self.applyIKRequested.emit)
-        btn_layout.addStretch()
-        btn_layout.addWidget(self.apply_btn)
-        layout.addLayout(btn_layout)
-
         layout.addStretch()
 
     def _create_axis_control(

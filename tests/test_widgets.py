@@ -189,18 +189,6 @@ class TestCartesianEditor:
         assert len(received) > 0
         assert abs(received[-1][0] - 0.3) < 0.01  # X value
 
-    def test_apply_ik_signal(self, qapp):
-        """Test applyIKRequested signal emits on button click."""
-        from widgets.cartesian_editor import CartesianEditorWidget
-
-        widget = CartesianEditorWidget()
-        clicked = []
-
-        widget.applyIKRequested.connect(lambda: clicked.append(True))
-        widget.apply_btn.click()
-
-        assert len(clicked) == 1
-
     def test_get_xyz(self, qapp):
         """Test get_xyz returns position only."""
         from widgets.cartesian_editor import CartesianEditorWidget
@@ -227,3 +215,174 @@ class TestCartesianEditor:
         assert abs(rpy[0] - radians(90)) < 0.01
         assert abs(rpy[1] - radians(45)) < 0.01
         assert abs(rpy[2] - radians(-45)) < 0.01
+
+
+class TestFKIKWidget:
+    """Tests for FKIKWidget unified FK/IK panel."""
+
+    def test_create_widget(self, qapp):
+        """Test widget creates without error."""
+        from widgets.fkik_widget import FKIKWidget
+
+        widget = FKIKWidget()
+        assert widget is not None
+        assert hasattr(widget, 'joint_slider')
+        assert hasattr(widget, 'cartesian_widget')
+        assert hasattr(widget, 'jointValuesChanged')
+        assert hasattr(widget, 'ikSolveRequested')
+
+    def test_ik_solve_moves_vtk_actors(self, qapp):
+        """Test IK solve updates VTK actor positions."""
+        from pathlib import Path
+        from widgets.fkik_widget import FKIKWidget
+        from core.scene_manager import SceneManager
+        import tesseract_robotics
+        from tesseract_robotics.tesseract_environment import Environment
+        from tesseract_robotics.tesseract_common import GeneralResourceLocator
+        import vtk
+
+        # Load robot with SRDF for kinematic group
+        support_dir = Path(tesseract_robotics.get_tesseract_support_path())
+        urdf = support_dir / "urdf" / "abb_irb2400.urdf"
+        srdf = support_dir / "urdf" / "abb_irb2400.srdf"
+
+        if not urdf.exists() or not srdf.exists():
+            pytest.skip("tesseract_support not found")
+
+        env = Environment()
+        loc = GeneralResourceLocator()
+        assert env.init(str(urdf), str(srdf), loc)
+
+        # Create scene manager and load environment
+        renderer = vtk.vtkRenderer()
+        scene = SceneManager(renderer)
+        scene.load_environment(env)
+
+        # Get initial link_6 actor position (tool0 has no geometry)
+        link6_actors = scene.link_actors.get("link_6", [])
+        assert len(link6_actors) > 0, "link_6 should have actors"
+        initial_pos = link6_actors[0].GetCenter()
+
+        # Create FKIKWidget
+        widget = FKIKWidget()
+        widget.set_environment(env, "manipulator", "tool0")
+        widget.set_joints({
+            "joint_1": (-3.14, 3.14, 0.0),
+            "joint_2": (-1.74, 1.92, 0.0),
+            "joint_3": (-3.14, 3.14, 0.0),
+            "joint_4": (-3.14, 3.14, 0.0),
+            "joint_5": (-2.18, 2.18, 0.0),
+            "joint_6": (-6.28, 6.28, 0.0),
+        })
+
+        # Connect signal to scene update
+        widget.jointValuesChanged.connect(scene.update_joint_values)
+
+        # Set target pose and solve IK
+        widget.cartesian_widget.set_pose(0.8, 0.3, 1.0, 0.0, 1.57, 0.0)
+        widget._on_ik_solve_requested()
+
+        # Verify IK solved
+        assert "solved" in widget.status_label.text().lower(), \
+            f"IK should solve, got: {widget.status_label.text()}"
+
+        # Get new link_6 position
+        new_pos = link6_actors[0].GetCenter()
+
+        # Position should have changed
+        pos_changed = any(abs(new_pos[i] - initial_pos[i]) > 0.01 for i in range(3))
+        assert pos_changed, \
+            f"VTK actor should move after IK. Initial: {initial_pos}, New: {new_pos}"
+
+    def test_fk_updates_ik_display(self, qapp):
+        """Test FK slider changes update IK Cartesian display."""
+        from pathlib import Path
+        from widgets.fkik_widget import FKIKWidget
+        import tesseract_robotics
+        from tesseract_robotics.tesseract_environment import Environment
+        from tesseract_robotics.tesseract_common import GeneralResourceLocator
+
+        # Load robot with SRDF for kinematic group
+        support_dir = Path(tesseract_robotics.get_tesseract_support_path())
+        urdf = support_dir / "urdf" / "abb_irb2400.urdf"
+        srdf = support_dir / "urdf" / "abb_irb2400.srdf"
+
+        if not urdf.exists() or not srdf.exists():
+            pytest.skip("tesseract_support not found")
+
+        env = Environment()
+        loc = GeneralResourceLocator()
+        assert env.init(str(urdf), str(srdf), loc)
+
+        widget = FKIKWidget()
+        widget.set_environment(env, "manipulator", "tool0")
+        widget.set_joints({
+            "joint_1": (-3.14, 3.14, 0.0),
+            "joint_2": (-1.74, 1.92, 0.0),
+            "joint_3": (-3.14, 3.14, 0.0),
+            "joint_4": (-3.14, 3.14, 0.0),
+            "joint_5": (-2.18, 2.18, 0.0),
+            "joint_6": (-6.28, 6.28, 0.0),
+        })
+
+        # Get initial TCP pose
+        initial_pose = widget.cartesian_widget.get_pose()
+
+        # Move joint 1 via spinbox (triggers signal emission)
+        # 0.5 rad = ~28.6 degrees
+        widget.joint_slider.sliders["joint_1"].spinbox.setValue(28.6)
+
+        # IK display should have updated
+        new_pose = widget.cartesian_widget.get_pose()
+        # Y position should have changed (joint 1 rotates around Z)
+        assert new_pose != initial_pose, "IK display should update when FK changes"
+
+    def test_ik_solve_updates_fk(self, qapp):
+        """Test IK solve updates FK sliders."""
+        from pathlib import Path
+        from widgets.fkik_widget import FKIKWidget
+        import tesseract_robotics
+        from tesseract_robotics.tesseract_environment import Environment
+        from tesseract_robotics.tesseract_common import GeneralResourceLocator
+
+        # Load robot with SRDF for kinematic group
+        support_dir = Path(tesseract_robotics.get_tesseract_support_path())
+        urdf = support_dir / "urdf" / "abb_irb2400.urdf"
+        srdf = support_dir / "urdf" / "abb_irb2400.srdf"
+
+        if not urdf.exists() or not srdf.exists():
+            pytest.skip("tesseract_support not found")
+
+        env = Environment()
+        loc = GeneralResourceLocator()
+        assert env.init(str(urdf), str(srdf), loc)
+
+        widget = FKIKWidget()
+        widget.set_environment(env, "manipulator", "tool0")
+        widget.set_joints({
+            "joint_1": (-3.14, 3.14, 0.0),
+            "joint_2": (-1.74, 1.92, 0.0),
+            "joint_3": (-3.14, 3.14, 0.0),
+            "joint_4": (-3.14, 3.14, 0.0),
+            "joint_5": (-2.18, 2.18, 0.0),
+            "joint_6": (-6.28, 6.28, 0.0),
+        })
+
+        # Get initial joint values
+        initial_joints = widget.get_joint_values()
+
+        # Set a different target pose (within reachable workspace)
+        widget.cartesian_widget.set_pose(0.8, 0.2, 1.2, 0.0, 1.57, 0.0)
+
+        # Trigger IK solve
+        widget._on_ik_solve_requested()
+
+        # Check if joints changed
+        new_joints = widget.get_joint_values()
+
+        # At least one joint should have changed
+        changed = any(
+            abs(new_joints.get(j, 0) - initial_joints.get(j, 0)) > 0.01
+            for j in initial_joints
+        )
+        assert changed, f"IK should update FK sliders. Status: {widget.status_label.text()}"

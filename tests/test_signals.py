@@ -830,19 +830,6 @@ class TestManipulationWidgetSignals:
         assert len(spy) == 1
         assert spy[0][0] == "gripper"
 
-    def test_mode_changed_signal(self, qapp):
-        """test modeChanged signal emitted when mode selection changes."""
-        from widgets.manipulation_widget import ManipulationWidget
-
-        w = ManipulationWidget()
-
-        spy = SignalSpy()
-        w.modeChanged.connect(spy.slot)
-        w.mode_combo_box.setCurrentIndex(1)  # Cartesian mode
-
-        assert len(spy) == 1
-        assert spy[0][0] == 1
-
     def test_reload_requested_signal(self, qapp):
         """test reloadRequested signal emitted when reload button clicked."""
         from widgets.manipulation_widget import ManipulationWidget
@@ -873,13 +860,12 @@ class TestManipulationWidgetSignals:
     def test_joint_values_changed_signal(self, qapp):
         """test jointValuesChanged signal emitted when joint slider values change."""
         from widgets.manipulation_widget import ManipulationWidget
-        from widgets.joint_slider import JointSliderWidget
 
         w = ManipulationWidget()
 
-        # Only if JointSliderWidget is available
-        if not hasattr(w, 'joint_state_slider') or w.joint_state_slider is None:
-            pytest.skip("JointSliderWidget not available")
+        # Only if FKIKWidget is available
+        if w.fkik_widget is None:
+            pytest.skip("FKIKWidget not available")
 
         w.set_joint_limits({"joint_1": (-1.0, 1.0, 0.0)})
 
@@ -887,7 +873,7 @@ class TestManipulationWidgetSignals:
         w.jointValuesChanged.connect(spy.slot)
 
         # Change joint value via spinbox (in degrees, 30 deg = ~0.5236 rad)
-        w.joint_state_slider.sliders["joint_1"].spinbox.setValue(30.0)
+        w.fkik_widget.joint_slider.sliders["joint_1"].spinbox.setValue(30.0)
 
         assert len(spy) >= 1
         assert isinstance(spy[0][0], dict)
@@ -935,23 +921,6 @@ class TestManipulationWidgetSignals:
         w.group_combo_box.setCurrentIndex(1)
 
         assert w.current_group() == "leg"
-
-    def test_mode_change_disables_tabs(self, qapp):
-        """test mode change enables/disables correct tabs."""
-        from widgets.manipulation_widget import ManipulationWidget
-
-        w = ManipulationWidget()
-
-        # Joint mode (index 0) - Joint tab enabled, Cartesian disabled
-        w.mode_combo_box.setCurrentIndex(0)
-        assert w.tab_widget.isTabEnabled(1) is True  # Joint tab
-        assert w.tab_widget.isTabEnabled(2) is False  # Cartesian tab
-
-        # Cartesian mode (index 1) - Joint tab disabled, Cartesian enabled
-        w.mode_combo_box.setCurrentIndex(1)
-        assert w.tab_widget.isTabEnabled(1) is False  # Joint tab
-        assert w.tab_widget.isTabEnabled(2) is True  # Cartesian tab
-
 
 class TestGroupStatesEditorSignals:
     """test GroupStatesEditorWidget signals."""

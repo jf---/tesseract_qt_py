@@ -41,7 +41,6 @@ from tesseract_robotics.tesseract_collision import (
 from tesseract_robotics.tesseract_common import _FilesystemPath
 
 from widgets.render_widget import RenderWidget
-from widgets.joint_slider import JointSliderWidget
 from widgets.scene_tree import SceneTreeWidget
 from widgets.ik_widget import IKWidget
 from widgets.info_panel import RobotInfoPanel
@@ -67,6 +66,7 @@ class TesseractViewer(QMainWindow):
         self.setMinimumSize(800, 600)
         self._env = None
         self._paths = (None, None)  # urdf, srdf
+        self._joint_limits = {}  # joint name -> (lower, upper, current)
         self._settings = QSettings("tesseract_qt", "viewer")
         self._recent_actions = []
         self.state_mgr = StateManager()
@@ -132,11 +132,6 @@ class TesseractViewer(QMainWindow):
         self.tree_dock.setWidget(self.tree)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.tree_dock)
 
-        self.joint_dock = QDockWidget("Joints", self)
-        self.joints = JointSliderWidget()
-        self.joint_dock.setWidget(self.joints)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.joint_dock)
-
         self.ik_dock = QDockWidget("IK Solver", self)
         self.ik_widget = IKWidget()
         self.ik_dock.setWidget(self.ik_widget)
@@ -182,17 +177,16 @@ class TesseractViewer(QMainWindow):
         self.task_composer_dock.setWidget(self.task_composer_widget)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.task_composer_dock)
 
-        # Tabify right panel docks
-        self.tabifyDockWidget(self.joint_dock, self.ik_dock)
+        # Tabify right panel docks (Manipulation first - has FK/IK)
+        self.tabifyDockWidget(self.manip_dock, self.ik_dock)
         self.tabifyDockWidget(self.ik_dock, self.info_dock)
         self.tabifyDockWidget(self.info_dock, self.contact_dock)
         self.tabifyDockWidget(self.contact_dock, self.acm_dock)
         self.tabifyDockWidget(self.acm_dock, self.kin_groups_dock)
-        self.tabifyDockWidget(self.kin_groups_dock, self.manip_dock)
-        self.tabifyDockWidget(self.manip_dock, self.group_states_dock)
+        self.tabifyDockWidget(self.kin_groups_dock, self.group_states_dock)
         self.tabifyDockWidget(self.group_states_dock, self.tcp_dock)
         self.tabifyDockWidget(self.tcp_dock, self.task_composer_dock)
-        self.joint_dock.raise_()
+        self.manip_dock.raise_()
 
         self.traj_dock = QDockWidget("Trajectory Player", self)
         self.traj_player = TrajectoryPlayerWidget()
@@ -247,7 +241,7 @@ class TesseractViewer(QMainWindow):
 
         view_menu = self.menuBar().addMenu("View")
         view_menu.addAction(self.tree_dock.toggleViewAction())
-        view_menu.addAction(self.joint_dock.toggleViewAction())
+        view_menu.addAction(self.manip_dock.toggleViewAction())
         view_menu.addAction(self.ik_dock.toggleViewAction())
         view_menu.addAction(self.info_dock.toggleViewAction())
         view_menu.addAction(self.traj_dock.toggleViewAction())
@@ -255,7 +249,6 @@ class TesseractViewer(QMainWindow):
         view_menu.addAction(self.contact_dock.toggleViewAction())
         view_menu.addAction(self.acm_dock.toggleViewAction())
         view_menu.addAction(self.kin_groups_dock.toggleViewAction())
-        view_menu.addAction(self.manip_dock.toggleViewAction())
         view_menu.addAction(self.group_states_dock.toggleViewAction())
         view_menu.addAction(self.tcp_dock.toggleViewAction())
         view_menu.addAction(self.task_composer_dock.toggleViewAction())
@@ -263,18 +256,18 @@ class TesseractViewer(QMainWindow):
         view_menu.addAction("Show Workspace...", self._show_workspace)
         view_menu.addAction("Clear Workspace", self._clear_workspace)
 
-        # Connections
-        self.joints.jointValuesChanged.connect(self.render.update_joint_values)
-        self.joints.jointValuesChanged.connect(self.info_panel.update_joint_values)
-        self.joints.jointValuesChanged.connect(self.ik_widget.update_current_tcp_pose)
-        self.joints.jointValuesChanged.connect(self._check_collisions_realtime)
-        self.joints.jointValuesChanged.connect(self._update_tcp_status)
+        # Connections - FK/IK from ManipulationWidget
+        self.manip_widget.jointValuesChanged.connect(self.render.update_joint_values)
+        self.manip_widget.jointValuesChanged.connect(self.info_panel.update_joint_values)
+        self.manip_widget.jointValuesChanged.connect(self.ik_widget.update_current_tcp_pose)
+        self.manip_widget.jointValuesChanged.connect(self._check_collisions_realtime)
+        self.manip_widget.jointValuesChanged.connect(self._update_tcp_status)
         self.tree.linkSelected.connect(lambda n: (self.render.scene.highlight_link(n), self.render.render()))
         self.tree.linkSelected.connect(self.info_panel.set_tcp_link)
         self.tree.linkVisibilityChanged.connect(lambda n, v: (self.render.scene.set_link_visibility(n, v), self.render.render()))
         self.tree.linkFrameToggled.connect(lambda n, v: (self.render.scene.show_frame(n, v), self.render.render()))
         self.render.linkClicked.connect(self.tree.select_link)
-        self.ik_widget.solutionFound.connect(self.joints.set_values)
+        self.ik_widget.solutionFound.connect(lambda v: self.manip_widget.set_joint_values(v, emit_signal=True))
         self.ik_widget.targetPoseSet.connect(lambda pose: (self.render.scene.show_ik_target(pose), self.render.render()))
         self.traj_player.frameChanged.connect(self._on_trajectory_frame_changed)
         self.traj_player.frameChanged.connect(self.plot.set_frame_marker)
@@ -295,7 +288,6 @@ class TesseractViewer(QMainWindow):
         self.group_states_widget.state_added.connect(self._on_group_state_added)
         self.task_composer_widget.execute_requested.connect(self._execute_task_composer)
         self.task_composer_widget.environment_push_button.clicked.connect(self._on_pick_environment)
-        self.manip_widget.cartesianIKRequested.connect(self._on_cartesian_ik_requested)
 
         # Keyboard shortcuts
         self._setup_shortcuts()
@@ -321,7 +313,9 @@ class TesseractViewer(QMainWindow):
             self.render.load_environment(self._env)
             logger.info("Render loaded, setting up tree")
             self.tree.load_environment(self._env)
-            logger.info("Tree loaded, setting up joints")
+            logger.info("Tree loaded, setting up manipulation widget")
+            self.manip_widget.set_environment(self._env)
+            logger.info("Setting up joints")
             self._setup_joints()
             logger.info("Joints setup, loading info panel")
             self.info_panel.load_environment(self._env)
@@ -361,7 +355,8 @@ class TesseractViewer(QMainWindow):
                 lim = j.limits
                 lo, hi = (lim.lower, lim.upper) if lim else (-3.14, 3.14)
                 joints[j.getName()] = (lo, hi, 0.0)
-        self.joints.set_joints(joints)
+        self._joint_limits = joints  # Store for workspace/config operations
+        self.manip_widget.set_joint_limits(joints)
 
     def _detect_tcp_link(self) -> str | None:
         """detect TCP link from SRDF or kinematic chain"""
@@ -452,12 +447,12 @@ class TesseractViewer(QMainWindow):
 
     def _save_config(self):
         """Save joint config to JSON."""
-        if not self.joints.sliders:
+        if not self._joint_limits:
             return
         path, _ = QFileDialog.getSaveFileName(self, "Save Config", "", "JSON (*.json)")
         if path:
             try:
-                values = self.joints.get_values()
+                values = self.manip_widget.get_joint_values()
                 path = Path(path)
                 import json
                 with path.open("w") as f:
@@ -468,7 +463,7 @@ class TesseractViewer(QMainWindow):
 
     def _load_config(self):
         """Load joint config from JSON."""
-        if not self.joints.sliders:
+        if not self._joint_limits:
             return
         path, _ = QFileDialog.getOpenFileName(self, "Load Config", "", "JSON (*.json)")
         if path:
@@ -477,24 +472,24 @@ class TesseractViewer(QMainWindow):
                 import json
                 with path.open("r") as f:
                     values = json.load(f)
-                self.joints.set_values(values)
+                self.manip_widget.set_joint_values(values)
                 self.statusBar().showMessage(f"Loaded: {path}")
             except Exception as e:
                 QMessageBox.critical(self, "Error", str(e))
 
     def _save_pose(self):
         """Save current config as named pose."""
-        if not self.joints.sliders:
+        if not self._joint_limits:
             return
         name, ok = QInputDialog.getText(self, "Save Pose", "Pose name:")
         if ok and name:
-            values = self.joints.get_values()
+            values = self.manip_widget.get_joint_values()
             self.state_mgr.save_pose(name, values)
             self.statusBar().showMessage(f"Saved pose: {name}")
 
     def _load_pose(self):
         """Load named pose."""
-        if not self.joints.sliders:
+        if not self._joint_limits:
             return
         poses = self.state_mgr.list_poses()
         if not poses:
@@ -504,7 +499,7 @@ class TesseractViewer(QMainWindow):
         if ok and name:
             values = self.state_mgr.load_pose(name)
             if values:
-                self.joints.set_values(values)
+                self.manip_widget.set_joint_values(values)
                 self.statusBar().showMessage(f"Loaded pose: {name}")
 
 
@@ -541,7 +536,7 @@ class TesseractViewer(QMainWindow):
             self.traj_player.load_trajectory(trajectory)
 
             # Load into plot widget
-            joint_names = list(self.joints.sliders.keys()) if self.joints.sliders else []
+            joint_names = list(self._joint_limits.keys()) if self._joint_limits else []
             if joint_names:
                 self.plot.load_trajectory(data, joint_names)
 
@@ -559,7 +554,7 @@ class TesseractViewer(QMainWindow):
             # Handle both dict and object waypoints
             joints = waypoint.get('joints') if isinstance(waypoint, dict) else getattr(waypoint, 'joints', None)
             if joints:
-                self.joints.set_values(joints)
+                self.manip_widget.set_joint_values(joints)
 
     def _export_screenshot(self):
         """Export screenshot as PNG."""
@@ -597,15 +592,13 @@ class TesseractViewer(QMainWindow):
             QMessageBox.information(self, "Info", "Load URDF first")
             return
 
-        if not self.joints.sliders:
+        if not self._joint_limits:
             QMessageBox.information(self, "Info", "No movable joints")
             return
 
-        # Get joint names and limits
-        joint_names = list(self.joints.sliders.keys())
-        joint_limits = {}
-        for name, slider in self.joints.sliders.items():
-            joint_limits[name] = (slider.minimum() / 1000.0, slider.maximum() / 1000.0)
+        # Get joint names and limits from stored data
+        joint_names = list(self._joint_limits.keys())
+        joint_limits = {name: (lo, hi) for name, (lo, hi, _) in self._joint_limits.items()}
 
         # Get TCP link
         tcp_link = self.info_panel.tcp_link if hasattr(self.info_panel, 'tcp_link') else None
@@ -886,7 +879,7 @@ class TesseractViewer(QMainWindow):
             self.traj_player.load_trajectory(trajectory)
 
             # Load into plot
-            joint_names = list(self.joints.sliders.keys())
+            joint_names = list(self._joint_limits.keys())
             traj_data = [{"time": wp.time, "joints": wp.joints} for wp in trajectory]
             self.plot.load_trajectory(traj_data, joint_names)
 
@@ -905,36 +898,6 @@ class TesseractViewer(QMainWindow):
             self.statusBar().showMessage(f"Environment: {self._paths[0]}")
         else:
             self.statusBar().showMessage("No environment loaded - use File > Open URDF")
-
-    def _on_cartesian_ik_requested(self):
-        """Handle IK request from Cartesian editor."""
-        if not self._env:
-            self.statusBar().showMessage("No environment loaded")
-            return
-
-        pose = self.manip_widget.get_cartesian_pose()
-        if not pose:
-            self.statusBar().showMessage("No pose available")
-            return
-
-        x, y, z, roll, pitch, yaw = pose
-        self.statusBar().showMessage(f"IK request: ({x:.3f}, {y:.3f}, {z:.3f})")
-
-        # Use IK widget to solve
-        from tesseract_robotics.tesseract_common import Isometry3d, Translation3d, AngleAxisd
-        import numpy as np
-
-        # Build target transform from XYZ + RPY
-        tf = Isometry3d.Identity()
-        tf = tf * Translation3d(x, y, z)
-        # Apply RPY (ZYX order)
-        tf = tf * AngleAxisd(yaw, np.array([0, 0, 1], dtype=np.float64))
-        tf = tf * AngleAxisd(pitch, np.array([0, 1, 0], dtype=np.float64))
-        tf = tf * AngleAxisd(roll, np.array([1, 0, 0], dtype=np.float64))
-
-        # Set target in IK widget and solve
-        self.ik_widget.set_target_pose(tf)
-        self.ik_widget._solve_ik()
 
     def _execute_task_composer(self):
         """Execute motion planning via task composer."""
@@ -1153,7 +1116,7 @@ class TesseractViewer(QMainWindow):
     def _on_group_state_added(self, group: str, state_name: str, values: dict):
         """Handle new state added - populate with current joint values."""
         try:
-            current_values = self.joints.get_values()
+            current_values = self.manip_widget.get_joint_values()
             # Update the state with current joint values
             states = self.group_states_widget.get_states()
             if group in states and state_name in states[group]:
@@ -1170,7 +1133,7 @@ class TesseractViewer(QMainWindow):
             states = self.group_states_widget.get_states()
             if group in states and state_name in states[group]:
                 joint_values = states[group][state_name]
-                self.joints.set_values(joint_values)  # Emits jointValuesChanged signal
+                self.manip_widget.set_joint_values(joint_values)
                 self.statusBar().showMessage(f"Applied state '{state_name}' for group '{group}'")
                 logger.info(f"Group state applied: {group}/{state_name} with {len(joint_values)} joints")
             else:
@@ -1215,6 +1178,10 @@ class TesseractViewer(QMainWindow):
             tcp_link = self._detect_tcp_link()
             if tcp_link:
                 self.tcp_widget.set_tcp(tcp_link)
+                # Sync manip_widget TCP combo
+                idx = self.manip_widget.tcp_combo_box.findText(tcp_link)
+                if idx >= 0:
+                    self.manip_widget.tcp_combo_box.setCurrentIndex(idx)
 
             # Populate Task Composer
             self._populate_task_composer()
