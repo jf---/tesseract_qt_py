@@ -48,7 +48,8 @@ class TesseractViewer(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Tesseract Viewer")
-        self.resize(1400, 900)
+        self.resize(1400, 800)
+        self.setMinimumSize(800, 600)
         self._env = None
         self._paths = (None, None)  # urdf, srdf
         self._settings = QSettings("tesseract_qt", "viewer")
@@ -90,7 +91,11 @@ class TesseractViewer(QMainWindow):
         self.plot = PlotWidget()
         self.plot_dock.setWidget(self.plot)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.plot_dock)
-        self.tabifyDockWidget(self.traj_dock, self.plot_dock)  # Tab with trajectory
+        self.tabifyDockWidget(self.traj_dock, self.plot_dock)
+        self.traj_dock.raise_()
+
+        # Set bottom dock area height
+        self.resizeDocks([self.traj_dock], [180], Qt.Orientation.Vertical)
 
         self.contact_dock = QDockWidget("Contact Checker", self)
         self.contact_widget = ContactComputeWidget()

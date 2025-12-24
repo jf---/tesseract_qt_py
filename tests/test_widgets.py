@@ -2,7 +2,7 @@
 import pytest
 
 
-def test_plot_widget_load_trajectory():
+def test_plot_widget_load_trajectory(qapp):
     """Test PlotWidget loads trajectory data."""
     from widgets.plot_widget import PlotWidget
 
@@ -22,7 +22,7 @@ def test_plot_widget_load_trajectory():
     assert plot.data["j1"][1] == [0.0, 1.0, 0.5]  # j1 values
 
 
-def test_plot_widget_frame_marker():
+def test_plot_widget_frame_marker(qapp):
     """Test PlotWidget frame marker."""
     from widgets.plot_widget import PlotWidget
 
@@ -40,7 +40,7 @@ def test_plot_widget_frame_marker():
     assert plot.frame_line is not None
 
 
-def test_contact_widget_results():
+def test_contact_widget_results(qapp):
     """Test ContactComputeWidget results table."""
     from widgets.contact_compute_widget import ContactComputeWidget
 
@@ -59,7 +59,7 @@ def test_contact_widget_results():
     assert widget.contact_results_widget.rowCount() == 0
 
 
-def test_ik_widget_signals():
+def test_ik_widget_signals(qapp):
     """Test IKWidget has required signals."""
     from widgets.ik_widget import IKWidget
 
@@ -71,7 +71,7 @@ def test_ik_widget_signals():
     assert hasattr(widget, 'set_planning_status')
 
 
-def test_scene_tree_signals():
+def test_scene_tree_signals(qapp):
     """Test SceneTreeWidget has required signals."""
     from widgets.scene_tree import SceneTreeWidget
 
@@ -84,20 +84,34 @@ def test_scene_tree_signals():
 
 def test_all_docks_in_view_menu():
     """Test all dock widgets are accessible via View menu."""
-    # Parse app.py to check all docks are registered
     from pathlib import Path
+    import re
 
     app_py = Path(__file__).parent.parent / "app.py"
     content = app_py.read_text()
 
-    # Find all dock widgets created
-    import re
     dock_pattern = r'self\.(\w+_dock)\s*=\s*QDockWidget'
     created_docks = set(re.findall(dock_pattern, content))
 
-    # Find all docks added to view menu
     menu_pattern = r'view_menu\.addAction\(self\.(\w+_dock)\.toggleViewAction'
     menu_docks = set(re.findall(menu_pattern, content))
 
     missing = created_docks - menu_docks
     assert not missing, f"Docks missing from View menu: {missing}"
+
+
+def test_window_size_reasonable():
+    """Test app.py configures reasonable window size."""
+    from pathlib import Path
+    import re
+
+    app_py = Path(__file__).parent.parent / "app.py"
+    content = app_py.read_text()
+
+    # Check resize() call
+    match = re.search(r'self\.resize\((\d+),\s*(\d+)\)', content)
+    assert match, "No resize() call found"
+
+    width, height = int(match.group(1)), int(match.group(2))
+    assert width <= 1600, f"Default width too large: {width}"
+    assert height <= 1000, f"Default height too large: {height}"
