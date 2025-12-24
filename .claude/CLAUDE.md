@@ -1,25 +1,44 @@
 # tesseract_qt_py
 
-## CRITICAL: macOS VTK+Qt Setup
+## CRITICAL: Import Order & Plugin Setup
 
 ```python
-# MUST be at top of any VTK+Qt file on macOS
+# 1. Import tesseract_robotics FIRST - sets up plugin paths
+import tesseract_robotics
+
+# 2. macOS VTK+Qt setup
 import os
 os.environ.pop('DISPLAY', None)  # NO X11 EVER
 os.environ['QT_QPA_PLATFORM'] = 'cocoa'
 
 import vtkmodules.qt
-vtkmodules.qt.QVTKRWIBase = "QOpenGLWidget"  # Required for rendering to work
+vtkmodules.qt.QVTKRWIBase = "QOpenGLWidget"  # Required for rendering
 
-# THEN import Qt and VTK widgets
+# 3. THEN import Qt and VTK widgets
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 ```
 
-Without `QVTKRWIBase = "QOpenGLWidget"`, VTK renders to invisible buffer (glass sheet window).
+- Without `import tesseract_robotics` first, plugin env vars not set
+- Without `QVTKRWIBase = "QOpenGLWidget"`, VTK renders to invisible buffer
+
+## CRITICAL: Collision Detection Requires SRDF
+
+Contact manager only works when loading with SRDF:
+```python
+# Works - SRDF loads contact_manager_plugins.yaml
+env.init(urdf_path, srdf_path, locator)
+manager = env.getDiscreteContactManager()  # Returns valid manager
+
+# Fails - no plugin config loaded
+env.init(urdf_path, locator)
+manager = env.getDiscreteContactManager()  # Returns None!
+```
+
+The SRDF contains `<contact_managers_plugin_config filename="..."/>` which triggers plugin loading.
 
 ---
 
-Python/Qt6/VTK replacement for tesseract_qt. ~1500 LOC vs 59k C++ LOC.
+Python/Qt6/VTK replacement for tesseract_qt. ~7.3k LOC + 2.2k tests vs 59k C++ LOC.
 
 ## Why
 
@@ -78,6 +97,14 @@ conda activate tesseract_nb
 cd ~/Code/CADCAM/tesseract_qt_py
 python app.py /path/to/robot.urdf [/path/to/robot.srdf]
 ```
+
+## Testing
+
+**CRITICAL: ALWAYS run tests in parallel with xdist:**
+```bash
+pytest tests/ -n auto -v --tb=short
+```
+Never run `pytest` without `-n auto` - parallel execution is mandatory for acceptable performance.
 
 ## Keyboard Shortcuts
 

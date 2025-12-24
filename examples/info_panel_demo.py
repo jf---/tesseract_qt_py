@@ -64,11 +64,10 @@ class InfoPanelDemo(QMainWindow):
 
     def _on_joints_changed(self, values: dict[str, float]):
         """Update environment and info panel."""
-        for name, value in values.items():
-            try:
-                self.env.setState([name], [value])
-            except Exception:
-                pass
+        try:
+            self.env.setState(values)
+        except Exception:
+            pass
         self.info.update_state()
 
 

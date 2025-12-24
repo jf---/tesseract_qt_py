@@ -2,60 +2,75 @@
 
 ## Repository
 - GitHub: https://github.com/jf---/tesseract_qt_py
-- Branch: main
-- Latest commit: 68149ba - "fix contact compute + add all P2 docks"
+- Branch: master
+- 101 tests passing
 
-## Completed
+## CRITICAL: Plugin Setup
 
-### P1 Features (All Done)
-- Contact Results Table - QTableWidget with results
-- Joint Trajectory Plot - matplotlib, tabbed with trajectory player
-- Environment Commands - context menu signals
-- Motion Planning UI - Plan Motion button in IK widget
+### Import Order
+```python
+import tesseract_robotics  # FIRST - sets up plugin paths
+```
+The root `tesseract_robotics.__init__` sets:
+- `TESSERACT_CONTACT_MANAGERS_PLUGIN_DIRECTORIES`
+- `TESSERACT_KINEMATICS_PLUGIN_DIRECTORIES`
+- `TESSERACT_TASK_COMPOSER_PLUGIN_DIRECTORIES`
 
-### P2 Features (All Done)
-- ACM Editor - wired to app, loads from env
-- Kinematic Groups Editor - signals + button handlers
-- ManipulationWidget - CartesianEditor embedded, mode switching
-- Group States Editor - new widget (190 LOC)
-- TCP Editor - new widget (117 LOC)
+### SRDF Required for Collision Detection
+Contact manager only works with SRDF:
+```python
+env.init(urdf_path, srdf_path, locator)  # Works
+env.init(urdf_path, locator)  # getDiscreteContactManager() returns None!
+```
+SRDF contains `<contact_managers_plugin_config>` that loads plugins.
 
-### UI Polish
-- Tabified right panel (9 docks)
-- Tabified bottom panel (trajectory + plot)
-- Fixed window sizing
-- Joint sorting alphabetical
-- matplotlib margins
+## Completed Features
 
-## Current State
-- 12 commits ahead of upstream tesseract_qt
-- All widget tests pass (except 1 needing tesseract_robotics)
-- App runs with TESSERACT_RESOURCE_PATH set
+### P1 - Core
+- Real-time collision detection (links turn red on collision)
+- Contact Results Table with detailed info
+- Joint Trajectory Plot (pyqtgraph)
+- Environment Commands
+
+### P2 - Enhanced
+- Task Composer UI (wired)
+- ACM Editor (loads from SRDF)
+- Kinematic Groups Editor
+- Group States Editor
+- TCP Editor
+- Manipulation Widget
+
+### UI
+- Tabified docks
+- VTK resize fix (resizeEvent)
+- Initial camera focus on robot bounds (not grid)
+- TCP pose in status bar (XYZ + RPY degrees) - right side, updates real-time
+- Uncaught exception logging via `sys.excepthook` -> loguru
 
 ## How to Run
 ```bash
-export TESSERACT_RESOURCE_PATH="/Users/jelle/Code/CADCAM/tesseract_python_nanobind/ws/install/share"
-cd /Users/jelle/Code/CADCAM/tesseract_qt_py
-/opt/miniconda3/envs/tesseract_nb/bin/python app.py /path/to/robot.urdf
+conda activate tesseract_nb
+cd ~/Code/CADCAM/tesseract_qt_py
+python app.py /path/to/robot.urdf /path/to/robot.srdf
 ```
 
-## Remaining (P3)
+## Remaining (P3 - Nice to Have)
 - Undo/Redo
 - Multiple Environments
-- Logging Panel
-- Task Composer execution wiring
+- Dockable log panel
+- **Interactive IK gimbal at tool frame** (drag to move robot via IK)
+- **XYZ + RPY sliders** alongside joint sliders for Cartesian TCP control
 
-## Key Files Modified
-- app.py - main application (~850 LOC)
-- widgets/plot_widget.py - matplotlib plotting
-- widgets/manipulation_widget.py - 4-tab control
-- widgets/kinematic_groups_editor.py - signals added
-- widgets/group_states_editor.py - NEW
-- widgets/tcp_editor.py - NEW
-- widgets/acm_editor.py - wired to app
-- core/scene_manager.py - Box API fix
+## Key API Notes
+- `env.setState(joint_dict)` - use dict, not `(list, list)`
+- `state.joints` - not `state.joint_positions`
+- `SceneState` attributes: `joints`, `link_transforms`, `joint_transforms`
+- Isometry3d: `tf.translation()` and `tf.rotation()` are methods, not properties
+- PySide6 status bar: add permanent widgets BEFORE `setStatusBar()` to avoid Qt ownership deletion
 
 ## Notes
-- Contact compute uses BulletDiscreteBVHManager via plugin factory
-- Plugin config path hardcoded: /Users/jelle/Code/CADCAM/tesseract_python_nanobind/ws/install/share/tesseract_support/urdf/contact_manager_plugins.yaml
 - QPainter warnings are cosmetic (macOS VTK/Qt)
+- Kinematics plugins (KDL/OPW) fail on macOS due to `@rpath` not resolving in dlopen
+  - Symbols exist (`nm -gU`), but runtime loading fails
+  - Bug filed: see `tesseract_nanobind/tests/test_kinematics_plugin_loading.py`
+  - Numerical IK fallback works
