@@ -1331,6 +1331,20 @@ def main():
     if args.urdf:
         v.load(args.urdf, args.srdf)
         v.render.vtk_widget.GetRenderWindow().Render()
+    else:
+        # Auto-load ABB robot from tesseract_support
+        try:
+            from pathlib import Path
+            import tesseract_robotics
+            logger.info("No URDF specified, loading default ABB IRB2400")
+            support_dir = Path(tesseract_robotics.get_tesseract_support_path())
+            urdf = support_dir / "urdf" / "abb_irb2400.urdf"
+            srdf = support_dir / "urdf" / "abb_irb2400.srdf"
+            if urdf.exists():
+                v.load(str(urdf), str(srdf) if srdf.exists() else None)
+                v.render.vtk_widget.GetRenderWindow().Render()
+        except Exception as e:
+            logger.warning(f"Could not auto-load ABB robot: {e}")
 
     if args.trajectory:
         v._load_trajectory_file(args.trajectory)
