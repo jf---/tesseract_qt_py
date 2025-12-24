@@ -80,3 +80,24 @@ def test_scene_tree_signals():
     assert hasattr(widget, 'linkSelected')
     assert hasattr(widget, 'linkVisibilityChanged')
     assert hasattr(widget, 'linkDeleteRequested')
+
+
+def test_all_docks_in_view_menu():
+    """Test all dock widgets are accessible via View menu."""
+    # Parse app.py to check all docks are registered
+    from pathlib import Path
+
+    app_py = Path(__file__).parent.parent / "app.py"
+    content = app_py.read_text()
+
+    # Find all dock widgets created
+    import re
+    dock_pattern = r'self\.(\w+_dock)\s*=\s*QDockWidget'
+    created_docks = set(re.findall(dock_pattern, content))
+
+    # Find all docks added to view menu
+    menu_pattern = r'view_menu\.addAction\(self\.(\w+_dock)\.toggleViewAction'
+    menu_docks = set(re.findall(menu_pattern, content))
+
+    missing = created_docks - menu_docks
+    assert not missing, f"Docks missing from View menu: {missing}"

@@ -141,6 +141,7 @@ class TesseractViewer(QMainWindow):
         view_menu.addAction(self.ik_dock.toggleViewAction())
         view_menu.addAction(self.info_dock.toggleViewAction())
         view_menu.addAction(self.traj_dock.toggleViewAction())
+        view_menu.addAction(self.plot_dock.toggleViewAction())
         view_menu.addAction(self.contact_dock.toggleViewAction())
         view_menu.addSeparator()
         view_menu.addAction("Show Workspace...", self._show_workspace)
