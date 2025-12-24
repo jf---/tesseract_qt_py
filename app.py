@@ -262,6 +262,8 @@ class TesseractViewer(QMainWindow):
         self.tcp_widget.tcp_changed.connect(self._on_tcp_changed)
         self.tcp_widget.offset_changed.connect(self._on_tcp_offset_changed)
         self.kin_groups_widget.group_added.connect(self._on_kin_group_added)
+        self.kin_groups_widget.group_removed.connect(self._on_kin_group_removed)
+        self.kin_groups_widget.group_modified.connect(self._on_kin_group_modified)
         self.group_states_widget.state_applied.connect(self._on_group_state_applied)
         self.group_states_widget.state_added.connect(self._on_group_state_added)
         self.task_composer_widget.execute_requested.connect(self._execute_task_composer)
@@ -945,13 +947,105 @@ class TesseractViewer(QMainWindow):
 
     def _on_kin_group_added(self, name: str, group_type: str, data: object):
         """Handle kinematic group added."""
-        self.statusBar().showMessage(f"Group '{name}' ({group_type}) added")
-        logger.info(f"Kinematic group added: {name} type={group_type} data={data}")
-        # Refresh group lists in other widgets
-        groups = self._get_group_names()
-        groups.append(name)
-        self.manip_widget.set_groups(list(set(groups)))
-        self.group_states_widget.set_groups(list(set(groups)))
+        if not self._env:
+            logger.warning("No environment loaded")
+            return
+
+        try:
+            kin_info = self._env.getKinematicsInformation()
+
+            if group_type == "chain":
+                base_link, tip_link = data
+                # Add chain group to kinematics info
+                from tesseract_robotics.tesseract_srdf import ChainGroup
+                chain = ChainGroup()
+                chain.append((base_link, tip_link))
+                kin_info.chain_groups[name] = chain
+                logger.info(f"Added chain group '{name}': {base_link} -> {tip_link}")
+
+            elif group_type == "joints":
+                # Add joint group
+                from tesseract_robotics.tesseract_srdf import JointGroup
+                joint_group = JointGroup()
+                for j in data:
+                    joint_group.append(j)
+                kin_info.joint_groups[name] = joint_group
+                logger.info(f"Added joint group '{name}': {data}")
+
+            elif group_type == "links":
+                # Add link group
+                from tesseract_robotics.tesseract_srdf import LinkGroup
+                link_group = LinkGroup()
+                for link in data:
+                    link_group.append(link)
+                kin_info.link_groups[name] = link_group
+                logger.info(f"Added link group '{name}': {data}")
+
+            self.statusBar().showMessage(f"Group '{name}' ({group_type}) added")
+
+            # Refresh group lists in other widgets
+            groups = self._get_group_names()
+            self.manip_widget.set_groups(groups)
+            self.group_states_widget.set_groups(groups)
+
+        except Exception as e:
+            logger.error(f"Failed to add kinematic group: {e}")
+            self.statusBar().showMessage(f"Failed to add group: {e}")
+
+    def _on_kin_group_removed(self, name: str):
+        """Handle kinematic group removed."""
+        if not self._env:
+            return
+
+        try:
+            kin_info = self._env.getKinematicsInformation()
+
+            # Try to remove from all group types
+            removed = False
+            if name in kin_info.chain_groups:
+                del kin_info.chain_groups[name]
+                removed = True
+            if name in kin_info.joint_groups:
+                del kin_info.joint_groups[name]
+                removed = True
+            if name in kin_info.link_groups:
+                del kin_info.link_groups[name]
+                removed = True
+
+            if removed:
+                logger.info(f"Removed kinematic group: {name}")
+                self.statusBar().showMessage(f"Group '{name}' removed")
+
+                # Refresh group lists
+                groups = self._get_group_names()
+                self.manip_widget.set_groups(groups)
+                self.group_states_widget.set_groups(groups)
+            else:
+                logger.warning(f"Group '{name}' not found")
+                self.statusBar().showMessage(f"Group '{name}' not found")
+
+        except Exception as e:
+            logger.error(f"Failed to remove kinematic group: {e}")
+            self.statusBar().showMessage(f"Failed to remove group: {e}")
+
+    def _on_kin_group_modified(self):
+        """Handle kinematic groups modified (Apply button)."""
+        if not self._env:
+            return
+
+        try:
+            # Refresh all widgets with current group info
+            groups = self._get_group_names()
+            self.manip_widget.set_groups(groups)
+            self.group_states_widget.set_groups(groups)
+            self._load_group_states_from_env()
+
+            logger.info("Kinematic groups applied")
+            self.statusBar().showMessage("Kinematic groups applied")
+
+        except Exception as e:
+            logger.error(f"Failed to apply kinematic groups: {e}")
+            self.statusBar().showMessage(f"Failed to apply: {e}")
 
     def _on_group_state_added(self, group: str, state_name: str, values: dict):
         """Handle new state added - populate with current joint values."""

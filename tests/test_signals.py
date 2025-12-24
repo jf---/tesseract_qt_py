@@ -623,6 +623,187 @@ class TestACMEditorSignals:
         assert isinstance(spy[0][0], int)
 
 
+class TestKinematicGroupsEditorSignals:
+    """test KinematicGroupsEditorWidget signals."""
+
+    @pytest.fixture
+    def qapp(self):
+        try:
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance() or QApplication([])
+            yield app
+        except ImportError:
+            pytest.skip("PySide6 not installed")
+
+    def test_group_added_chain_signal(self, qapp):
+        """test group_added signal emitted for chain group."""
+        from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
+
+        w = KinematicGroupsEditorWidget()
+        w.set_links(["base_link", "link_1", "link_2", "tool0"])
+        w.groupNameLineEdit.setText("test_group")
+        w.kinGroupTabWidget.setCurrentIndex(0)  # CHAIN tab
+        w.baseLinkNameComboBox.setCurrentText("base_link")
+        w.tipLinkNameComboBox.setCurrentText("tool0")
+
+        spy = SignalSpy()
+        w.group_added.connect(spy.slot)
+        w.addGroupPushButton.click()
+
+        assert len(spy) == 1
+        assert spy[0][0] == "test_group"
+        assert spy[0][1] == "chain"
+        assert spy[0][2] == ("base_link", "tool0")
+
+    def test_group_added_joints_signal(self, qapp):
+        """test group_added signal emitted for joints group."""
+        from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
+
+        w = KinematicGroupsEditorWidget()
+        w.set_joints(["joint_1", "joint_2", "joint_3"])
+        w.groupNameLineEdit.setText("joints_group")
+        w.kinGroupTabWidget.setCurrentIndex(1)  # JOINTS tab
+
+        # Add joints to list
+        w.jointComboBox.setCurrentText("joint_1")
+        w.addJointPushButton.click()
+        w.jointComboBox.setCurrentText("joint_2")
+        w.addJointPushButton.click()
+
+        spy = SignalSpy()
+        w.group_added.connect(spy.slot)
+        w.addGroupPushButton.click()
+
+        assert len(spy) == 1
+        assert spy[0][0] == "joints_group"
+        assert spy[0][1] == "joints"
+        assert "joint_1" in spy[0][2]
+        assert "joint_2" in spy[0][2]
+
+    def test_group_added_links_signal(self, qapp):
+        """test group_added signal emitted for links group."""
+        from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
+
+        w = KinematicGroupsEditorWidget()
+        w.set_links(["base_link", "link_1", "link_2"])
+        w.groupNameLineEdit.setText("links_group")
+        w.kinGroupTabWidget.setCurrentIndex(2)  # LINKS tab
+
+        # Add links to list
+        w.linkComboBox.setCurrentText("link_1")
+        w.addLinkPushButton.click()
+        w.linkComboBox.setCurrentText("link_2")
+        w.addLinkPushButton.click()
+
+        spy = SignalSpy()
+        w.group_added.connect(spy.slot)
+        w.addGroupPushButton.click()
+
+        assert len(spy) == 1
+        assert spy[0][0] == "links_group"
+        assert spy[0][1] == "links"
+        assert "link_1" in spy[0][2]
+        assert "link_2" in spy[0][2]
+
+    def test_group_removed_signal(self, qapp):
+        """test group_removed signal emitted when remove clicked."""
+        from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
+
+        w = KinematicGroupsEditorWidget()
+        w.groupNameLineEdit.setText("group_to_remove")
+
+        spy = SignalSpy()
+        w.group_removed.connect(spy.slot)
+        w.removeGroupPushButton.click()
+
+        assert len(spy) == 1
+        assert spy[0][0] == "group_to_remove"
+
+    def test_group_modified_signal(self, qapp):
+        """test group_modified signal emitted when apply clicked."""
+        from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
+
+        w = KinematicGroupsEditorWidget()
+
+        spy = SignalSpy()
+        w.group_modified.connect(spy.slot)
+        w.applyPushButton.click()
+
+        assert len(spy) == 1
+        assert len(spy[0]) == 0  # No payload
+
+    def test_add_joint_to_list(self, qapp):
+        """test adding joint to list via button."""
+        from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
+
+        w = KinematicGroupsEditorWidget()
+        w.set_joints(["j1", "j2", "j3"])
+        w.kinGroupTabWidget.setCurrentIndex(1)  # JOINTS tab
+
+        w.jointComboBox.setCurrentText("j2")
+        w.addJointPushButton.click()
+
+        assert w.jointListWidget.count() == 1
+        assert w.jointListWidget.item(0).text() == "j2"
+
+    def test_remove_joint_from_list(self, qapp):
+        """test removing joint from list via button."""
+        from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
+
+        w = KinematicGroupsEditorWidget()
+        w.set_joints(["j1", "j2"])
+        w.kinGroupTabWidget.setCurrentIndex(1)
+
+        # Add then remove
+        w.jointComboBox.setCurrentText("j1")
+        w.addJointPushButton.click()
+        w.jointListWidget.setCurrentRow(0)
+        w.removeJointPushButton.click()
+
+        assert w.jointListWidget.count() == 0
+
+    def test_add_link_to_list(self, qapp):
+        """test adding link to list via button."""
+        from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
+
+        w = KinematicGroupsEditorWidget()
+        w.set_links(["link_1", "link_2"])
+        w.kinGroupTabWidget.setCurrentIndex(2)  # LINKS tab
+
+        w.linkComboBox.setCurrentText("link_1")
+        w.addLinkPushButton.click()
+
+        assert w.linkListWidget.count() == 1
+        assert w.linkListWidget.item(0).text() == "link_1"
+
+    def test_no_duplicate_joints(self, qapp):
+        """test same joint cannot be added twice."""
+        from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
+
+        w = KinematicGroupsEditorWidget()
+        w.set_joints(["j1"])
+        w.kinGroupTabWidget.setCurrentIndex(1)
+
+        w.jointComboBox.setCurrentText("j1")
+        w.addJointPushButton.click()
+        w.addJointPushButton.click()  # Try adding again
+
+        assert w.jointListWidget.count() == 1
+
+    def test_empty_group_name_no_signal(self, qapp):
+        """test no signal emitted when group name is empty."""
+        from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
+
+        w = KinematicGroupsEditorWidget()
+        w.groupNameLineEdit.setText("")  # Empty name
+
+        spy = SignalSpy()
+        w.group_added.connect(spy.slot)
+        w.addGroupPushButton.click()
+
+        assert len(spy) == 0  # No signal emitted
+
+
 class TestScaleCoherence:
     """test VTK actor scale matches tesseract geometry."""
 
