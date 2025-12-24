@@ -122,7 +122,9 @@ class SceneManager:
             print(f"setState error: {e}")
 
         self.update_from_state(self._env.getState())
-        self.renderer.GetRenderWindow().Render()
+        rw = self.renderer.GetRenderWindow()
+        if rw:
+            rw.Render()
 
     def _create_actor_from_geometry(self, geometry) -> vtk.vtkActor | None:
         """Create VTK actor from tesseract geometry."""

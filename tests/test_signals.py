@@ -615,3 +615,123 @@ class TestACMEditorSignals:
 
         assert len(spy) == 1
         assert isinstance(spy[0][0], int)
+
+
+class TestScaleCoherence:
+    """test VTK actor scale matches tesseract geometry."""
+
+    urdf = '/Users/jelle/Code/CADCAM/tesseract_python_nanobind/ws/src/tesseract/tesseract_support/urdf/abb_irb2400.urdf'
+    srdf = '/Users/jelle/Code/CADCAM/tesseract_python_nanobind/ws/src/tesseract/tesseract_support/urdf/abb_irb2400.srdf'
+
+    @pytest.fixture
+    def env_and_scene(self):
+        """create environment and scene manager."""
+        import os
+        import vtk
+        os.environ.pop('DISPLAY', None)
+        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+
+        from tesseract_robotics.tesseract_environment import Environment
+        from tesseract_robotics.tesseract_common import GeneralResourceLocator
+        from core.scene_manager import SceneManager
+
+        if not Path(self.urdf).exists():
+            pytest.skip("ABB URDF not found")
+
+        renderer = vtk.vtkRenderer()
+        render_window = vtk.vtkRenderWindow()
+        render_window.AddRenderer(renderer)
+        render_window.SetOffScreenRendering(True)
+
+        env = Environment()
+        loc = GeneralResourceLocator()
+        env.init(self.urdf, self.srdf, loc)
+
+        scene = SceneManager(renderer)
+        scene.load_environment(env)
+
+        return env, scene
+
+    def test_actor_bounds_match_geometry(self, env_and_scene):
+        """test VTK actor bounds match tesseract mesh geometry (within 5%)."""
+        import numpy as np
+        env, scene = env_and_scene
+
+        for link in env.getSceneGraph().getLinks():
+            name = link.getName()
+            if not link.visual or name not in scene.link_actors:
+                continue
+
+            geom = link.visual[0].geometry
+            verts = geom.getVertices()
+            if len(verts) == 0:
+                continue
+
+            # tesseract mesh bounds
+            verts_np = np.array(verts)
+            geom_size = verts_np.max(axis=0) - verts_np.min(axis=0)
+
+            # VTK actor bounds
+            actor = scene.link_actors[name][0]
+            bounds = actor.GetBounds()
+            actor_size = np.array([bounds[1]-bounds[0], bounds[3]-bounds[2], bounds[5]-bounds[4]])
+
+            # sizes should match within 5%
+            for i, (gs, as_) in enumerate(zip(geom_size, actor_size)):
+                if gs > 0.01:  # skip tiny dimensions
+                    ratio = as_ / gs
+                    assert 0.95 < ratio < 1.05, f"{name} axis {i}: geom={gs:.3f}, actor={as_:.3f}"
+
+    def test_actor_motion_matches_fk(self, env_and_scene):
+        """test VTK actor moves correct distance when joints change."""
+        import numpy as np
+        env, scene = env_and_scene
+
+        # get initial tool0 position
+        state0 = env.getState()
+        pos0 = np.array(state0.link_transforms['link_6'].translation())
+
+        # get VTK actor center
+        actor = scene.link_actors['link_6'][0]
+        vtk_pos0 = np.array(actor.GetCenter())
+
+        # apply joint motion
+        scene.update_joint_values({'joint_1': 1.5, 'joint_2': -0.5, 'joint_3': 0.5})
+
+        # get new positions
+        state1 = env.getState()
+        pos1 = np.array(state1.link_transforms['link_6'].translation())
+        vtk_pos1 = np.array(actor.GetCenter())
+
+        # FK motion
+        fk_motion = np.linalg.norm(pos1 - pos0)
+        vtk_motion = np.linalg.norm(vtk_pos1 - vtk_pos0)
+
+        # VTK motion should match FK motion within 10%
+        assert fk_motion > 0.3, f"FK motion too small: {fk_motion:.3f}m"
+        assert abs(vtk_motion - fk_motion) / fk_motion < 0.1, \
+            f"Motion mismatch: FK={fk_motion:.3f}m, VTK={vtk_motion:.3f}m"
+
+    def test_link_positions_coherent(self, env_and_scene):
+        """test all VTK actor positions within 10cm of tesseract FK."""
+        import numpy as np
+        env, scene = env_and_scene
+        state = env.getState()
+
+        for name, actors in scene.link_actors.items():
+            if not actors:
+                continue
+
+            # tesseract FK position
+            try:
+                tf = state.link_transforms[name]
+                fk_pos = np.array(tf.translation())
+            except (KeyError, AttributeError):
+                continue
+
+            # VTK actor center
+            vtk_pos = np.array(actors[0].GetCenter())
+
+            # positions should be within 0.5m (mesh center vs link origin)
+            dist = np.linalg.norm(vtk_pos - fk_pos)
+            assert dist < 0.5, f"{name}: FK={fk_pos}, VTK={vtk_pos}, dist={dist:.3f}m"

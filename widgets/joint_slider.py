@@ -216,6 +216,7 @@ class JointSliderWidget(QWidget):
         for name, value in values.items():
             if name in self.sliders:
                 self.sliders[name].set_value(value)
+        self.jointValuesChanged.emit(self.get_values())
 
     def _on_zero_all(self):
         """Set all joints to zero."""
