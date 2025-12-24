@@ -36,6 +36,8 @@ class ManipulationWidget(QWidget):
     reloadRequested = Signal()
     stateApplyRequested = Signal(str)  # state name
     jointValuesChanged = Signal(dict)  # joint values from slider
+    cartesianPoseChanged = Signal(float, float, float, float, float, float)  # xyz + rpy
+    cartesianIKRequested = Signal()  # apply IK button clicked
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -205,6 +207,11 @@ class ManipulationWidget(QWidget):
         if hasattr(self, 'joint_state_slider') and self.joint_state_slider is not None:
             self.joint_state_slider.jointValuesChanged.connect(self.jointValuesChanged.emit)
 
+        # Cartesian editor signals
+        if hasattr(self, 'cartesian_widget') and hasattr(self.cartesian_widget, 'poseChanged'):
+            self.cartesian_widget.poseChanged.connect(self.cartesianPoseChanged.emit)
+            self.cartesian_widget.applyIKRequested.connect(self.cartesianIKRequested.emit)
+
     def _on_group_changed(self, group_name: str):
         """Handle group selection change."""
         if group_name:
@@ -298,3 +305,14 @@ class ManipulationWidget(QWidget):
     def current_working_frame(self) -> str:
         """Get currently selected working frame."""
         return self.working_frame_combo_box.currentText()
+
+    def set_cartesian_pose(self, x: float, y: float, z: float, roll: float, pitch: float, yaw: float):
+        """Set Cartesian editor pose (angles in radians)."""
+        if hasattr(self, 'cartesian_widget') and hasattr(self.cartesian_widget, 'set_pose'):
+            self.cartesian_widget.set_pose(x, y, z, roll, pitch, yaw)
+
+    def get_cartesian_pose(self) -> tuple[float, float, float, float, float, float] | None:
+        """Get Cartesian editor pose (angles in radians)."""
+        if hasattr(self, 'cartesian_widget') and hasattr(self.cartesian_widget, 'get_pose'):
+            return self.cartesian_widget.get_pose()
+        return None

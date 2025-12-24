@@ -295,6 +295,7 @@ class TesseractViewer(QMainWindow):
         self.group_states_widget.state_added.connect(self._on_group_state_added)
         self.task_composer_widget.execute_requested.connect(self._execute_task_composer)
         self.task_composer_widget.environment_push_button.clicked.connect(self._on_pick_environment)
+        self.manip_widget.cartesianIKRequested.connect(self._on_cartesian_ik_requested)
 
         # Keyboard shortcuts
         self._setup_shortcuts()
@@ -904,6 +905,36 @@ class TesseractViewer(QMainWindow):
             self.statusBar().showMessage(f"Environment: {self._paths[0]}")
         else:
             self.statusBar().showMessage("No environment loaded - use File > Open URDF")
+
+    def _on_cartesian_ik_requested(self):
+        """Handle IK request from Cartesian editor."""
+        if not self._env:
+            self.statusBar().showMessage("No environment loaded")
+            return
+
+        pose = self.manip_widget.get_cartesian_pose()
+        if not pose:
+            self.statusBar().showMessage("No pose available")
+            return
+
+        x, y, z, roll, pitch, yaw = pose
+        self.statusBar().showMessage(f"IK request: ({x:.3f}, {y:.3f}, {z:.3f})")
+
+        # Use IK widget to solve
+        from tesseract_robotics.tesseract_common import Isometry3d, Translation3d, AngleAxisd
+        import numpy as np
+
+        # Build target transform from XYZ + RPY
+        tf = Isometry3d.Identity()
+        tf = tf * Translation3d(x, y, z)
+        # Apply RPY (ZYX order)
+        tf = tf * AngleAxisd(yaw, np.array([0, 0, 1], dtype=np.float64))
+        tf = tf * AngleAxisd(pitch, np.array([0, 1, 0], dtype=np.float64))
+        tf = tf * AngleAxisd(roll, np.array([1, 0, 0], dtype=np.float64))
+
+        # Set target in IK widget and solve
+        self.ik_widget.set_target_pose(tf)
+        self.ik_widget._solve_ik()
 
     def _execute_task_composer(self):
         """Execute motion planning via task composer."""
