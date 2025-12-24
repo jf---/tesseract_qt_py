@@ -157,14 +157,14 @@ class IKWidget(QWidget):
 
             # Convert RPY to transform
             from scipy.spatial.transform import Rotation
-            rot = Rotation.from_euler('xyz', [roll, pitch, yaw])
-            rot_matrix = rot.as_matrix()
-
-            # Create Eigen Isometry3d
             import tesseract_robotics.tesseract_common as tc
-            target = tc.Isometry3d.Identity()
-            target.translation = np.array([x, y, z])
-            target.linear = rot_matrix
+            rot = Rotation.from_euler('xyz', [roll, pitch, yaw])
+
+            # Create Isometry3d from 4x4 matrix (properties are read-only)
+            mat = np.eye(4)
+            mat[:3, :3] = rot.as_matrix()
+            mat[:3, 3] = [x, y, z]
+            target = tc.Isometry3d(mat)
 
             # Emit target pose for visualization
             self.targetPoseSet.emit(target)
