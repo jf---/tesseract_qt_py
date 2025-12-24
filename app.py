@@ -17,12 +17,17 @@ from loguru import logger
 logger.add("/tmp/tesseract_viewer.log", rotation="1 MB", level="DEBUG")
 logger.info("Starting tesseract_qt_py viewer")
 
+# Log uncaught exceptions
+def _excepthook(exc_type, exc_value, exc_tb):
+    logger.opt(exception=(exc_type, exc_value, exc_tb)).error("Uncaught exception")
+sys.excepthook = _excepthook
+
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QDockWidget, QFileDialog, QMessageBox, QStatusBar,
-    QInputDialog,
+    QInputDialog, QLabel,
 )
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
@@ -70,7 +75,7 @@ class TesseractViewer(QMainWindow):
 
     def _setup_status_logging(self):
         """Setup loguru to also show messages in status bar with copy context menu."""
-        from PySide6.QtWidgets import QStatusBar, QApplication
+        from PySide6.QtWidgets import QStatusBar, QApplication, QLabel
         from PySide6.QtGui import QAction
         from PySide6.QtCore import Qt
 
@@ -81,6 +86,11 @@ class TesseractViewer(QMainWindow):
         copy_action = QAction("Copy Message", status_bar)
         copy_action.triggered.connect(lambda: QApplication.clipboard().setText(status_bar.currentMessage()))
         status_bar.addAction(copy_action)
+
+        # TCP pose label - must be created here before setStatusBar() for proper Qt ownership
+        self._tcp_pose_label = QLabel("TCP: --", status_bar)
+        self._tcp_pose_label.setStyleSheet("padding-right: 10px; color: #666;")
+        status_bar.addPermanentWidget(self._tcp_pose_label)
 
         self.setStatusBar(status_bar)
         self._last_status_message = ""
@@ -199,8 +209,6 @@ class TesseractViewer(QMainWindow):
         # Set bottom dock area height
         self.resizeDocks([self.traj_dock], [180], Qt.Orientation.Vertical)
 
-        self.setStatusBar(QStatusBar())
-
         # Menu
         file_menu = self.menuBar().addMenu("File")
         file_menu.addAction("Open URDF...", self._open_urdf, QKeySequence.StandardKey.Open)
@@ -259,6 +267,8 @@ class TesseractViewer(QMainWindow):
         self.joints.jointValuesChanged.connect(self.render.update_joint_values)
         self.joints.jointValuesChanged.connect(self.info_panel.update_joint_values)
         self.joints.jointValuesChanged.connect(self.ik_widget.update_current_tcp_pose)
+        self.joints.jointValuesChanged.connect(self._check_collisions_realtime)
+        self.joints.jointValuesChanged.connect(self._update_tcp_status)
         self.tree.linkSelected.connect(lambda n: (self.render.scene.highlight_link(n), self.render.render()))
         self.tree.linkSelected.connect(self.info_panel.set_tcp_link)
         self.tree.linkVisibilityChanged.connect(lambda n, v: (self.render.scene.set_link_visibility(n, v), self.render.render()))
@@ -271,6 +281,7 @@ class TesseractViewer(QMainWindow):
         self.ik_widget.planRequested.connect(self._plan_motion)
         self.tree.linkDeleteRequested.connect(self._delete_link)
         self.contact_widget.btn_compute.clicked.connect(self._compute_contacts)
+        self.contact_widget.btn_check_state.clicked.connect(self._compute_contacts)
         self.contact_widget.btn_clear.clicked.connect(self._clear_contacts)
         self.acm_widget.entry_added.connect(self._on_acm_entry_added)
         self.acm_widget.entry_removed.connect(self._on_acm_entry_removed)
@@ -283,6 +294,7 @@ class TesseractViewer(QMainWindow):
         self.group_states_widget.state_applied.connect(self._on_group_state_applied)
         self.group_states_widget.state_added.connect(self._on_group_state_added)
         self.task_composer_widget.execute_requested.connect(self._execute_task_composer)
+        self.task_composer_widget.environment_push_button.clicked.connect(self._on_pick_environment)
 
         # Keyboard shortcuts
         self._setup_shortcuts()
@@ -331,6 +343,9 @@ class TesseractViewer(QMainWindow):
             self.statusBar().showMessage(f"Loaded: {urdf}")
             self._add_recent(str(Path(urdf).resolve()))
             logger.success(f"Successfully loaded: {urdf}")
+
+            # Update TCP pose in status bar
+            self._update_tcp_status({})
 
         except Exception as e:
             logger.exception(f"Failed to load: {e}")
@@ -637,34 +652,17 @@ class TesseractViewer(QMainWindow):
             return
 
         try:
-            # Create collision manager from factory with plugin config
-            plugin_config = _FilesystemPath(
-                "/Users/jelle/Code/CADCAM/tesseract_python_nanobind/ws/install/share/tesseract_support/urdf/contact_manager_plugins.yaml"
-            )
-            locator = GeneralResourceLocator()
-            factory = ContactManagersPluginFactory(plugin_config, locator)
-            manager = factory.createDiscreteContactManager("BulletDiscreteBVHManager")
-
-            # Add collision objects from environment
-            state = self._env.getState()
-            for link_name in self._env.getActiveLinkNames():
-                link = self._env.getLink(link_name)
-                if link and link.collision and link_name in state.link_transforms:
-                    # Extract geometries and their local transforms from Collision objects
-                    shapes = [coll.geometry for coll in link.collision]
-                    # Combine link transform with collision origin
-                    link_tf = state.link_transforms[link_name]
-                    shape_poses = [link_tf * coll.origin for coll in link.collision]
-                    manager.addCollisionObject(link_name, 0, shapes, shape_poses)
-
+            # Get discrete contact manager
+            manager = self._env.getDiscreteContactManager()
             manager.setActiveCollisionObjects(self._env.getActiveLinkNames())
 
             # Set margin from widget
             margin = CollisionMarginData(self.contact_widget.contact_threshold.value())
             manager.setCollisionMarginData(margin)
 
-            # Update transforms
+            # Update transforms from current joint state
             state = self._env.getState()
+            logger.debug(f"Contact check joints: {dict(state.joints)}")
             manager.setCollisionObjectsTransform(state.link_transforms)
 
             # Map contact test type from widget
@@ -722,6 +720,88 @@ class TesseractViewer(QMainWindow):
         self.render.render()
         self.contact_widget.clear_results()
         self.statusBar().showMessage("Contacts cleared")
+
+    def _check_collisions_realtime(self, joint_values: dict[str, float]):
+        """Real-time collision check on joint slider changes - highlights colliding links."""
+        if not self._env:
+            return
+
+        try:
+            manager = self._env.getDiscreteContactManager()
+            if manager is None:
+                return
+
+            manager.setActiveCollisionObjects(self._env.getActiveLinkNames())
+            manager.setCollisionMarginData(CollisionMarginData(0.0))  # No margin for real-time
+
+            state = self._env.getState()
+            manager.setCollisionObjectsTransform(state.link_transforms)
+
+            request = ContactRequest(ContactTestType.FIRST)
+            result_map = ContactResultMap()
+            manager.contactTest(result_map, request)
+
+            results = ContactResultVector()
+            result_map.flattenMoveResults(results)
+
+            # Collect colliding link names
+            colliding_links = set()
+            for contact in results:
+                colliding_links.add(contact.link_names[0])
+                colliding_links.add(contact.link_names[1])
+
+            # Update link colors
+            self.render.scene.highlight_collisions(colliding_links)
+            self.render.render()
+
+            if colliding_links:
+                self.statusBar().showMessage(f"⚠ Collision: {', '.join(sorted(colliding_links))}")
+            else:
+                self.statusBar().showMessage("No collisions")
+
+        except Exception:
+            pass  # Silent fail for real-time check
+
+    def _update_tcp_status(self, joint_values: dict[str, float]):
+        """Update TCP pose in status bar."""
+        if not self._env:
+            logger.debug("_update_tcp_status: no env")
+            return
+
+        try:
+            tcp_link = self.info_panel._tcp_link or "tool0"
+            logger.debug(f"_update_tcp_status: tcp_link={tcp_link}")
+            state = self._env.getState()
+            if tcp_link in state.link_transforms:
+                tf = state.link_transforms[tcp_link]
+                t = tf.translation()
+                # Extract RPY from rotation matrix
+                import math
+                m = tf.rotation()
+                # Roll, Pitch, Yaw from rotation matrix
+                if abs(m[2, 0]) < 0.9999:
+                    pitch = -math.asin(m[2, 0])
+                    roll = math.atan2(m[2, 1] / math.cos(pitch), m[2, 2] / math.cos(pitch))
+                    yaw = math.atan2(m[1, 0] / math.cos(pitch), m[0, 0] / math.cos(pitch))
+                else:
+                    yaw = 0
+                    if m[2, 0] < 0:
+                        pitch = math.pi / 2
+                        roll = math.atan2(m[0, 1], m[0, 2])
+                    else:
+                        pitch = -math.pi / 2
+                        roll = math.atan2(-m[0, 1], -m[0, 2])
+
+                text = (
+                    f"TCP: X={t[0]:.3f} Y={t[1]:.3f} Z={t[2]:.3f} | "
+                    f"R={math.degrees(roll):.1f}° P={math.degrees(pitch):.1f}° Y={math.degrees(yaw):.1f}°"
+                )
+                logger.debug(f"_update_tcp_status: setting text={text}")
+                self._tcp_pose_label.setText(text)
+            else:
+                logger.debug(f"_update_tcp_status: {tcp_link} not in link_transforms")
+        except Exception as e:
+            logger.exception(f"_update_tcp_status error: {e}")
 
     def _delete_link(self, link_name: str):
         """Delete link from environment."""
@@ -816,6 +896,14 @@ class TesseractViewer(QMainWindow):
         except Exception as e:
             logger.exception(f"Motion planning failed: {e}")
             self.ik_widget.set_planning_status(f"Error: {str(e)[:30]}", False)
+
+    def _on_pick_environment(self):
+        """Handle environment picker button - show current URDF path."""
+        if self._paths[0]:
+            self.task_composer_widget.environment_line_edit.setText(str(self._paths[0]))
+            self.statusBar().showMessage(f"Environment: {self._paths[0]}")
+        else:
+            self.statusBar().showMessage("No environment loaded - use File > Open URDF")
 
     def _execute_task_composer(self):
         """Execute motion planning via task composer."""
@@ -1072,8 +1160,7 @@ class TesseractViewer(QMainWindow):
             states = self.group_states_widget.get_states()
             if group in states and state_name in states[group]:
                 joint_values = states[group][state_name]
-                self.joints.set_values(joint_values)
-                self._on_joint_changed(joint_values)
+                self.joints.set_values(joint_values)  # Emits jointValuesChanged signal
                 self.statusBar().showMessage(f"Applied state '{state_name}' for group '{group}'")
                 logger.info(f"Group state applied: {group}/{state_name} with {len(joint_values)} joints")
             else:
