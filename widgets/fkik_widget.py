@@ -128,6 +128,11 @@ class FKIKWidget(QWidget):
                     self._joint_names = []
             else:
                 self._joint_names = []
+
+            # Initialize IK display from current joint values
+            if self._joint_names:
+                self._update_ik_from_fk(self.joint_slider.get_values())
+
         except Exception as e:
             self._joint_names = []
             self.status_label.setText(f"No kinematics: {e}")
@@ -240,7 +245,7 @@ class FKIKWidget(QWidget):
         if self._syncing:
             return
 
-        if self._group_name is None or self._env is None:
+        if not self._group_name or self._env is None:
             self.status_label.setText("No kinematics available")
             self.status_label.setStyleSheet("color: red; font-size: 10px;")
             return
