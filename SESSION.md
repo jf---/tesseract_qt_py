@@ -33,7 +33,7 @@ SRDF contains `<contact_managers_plugin_config>` that loads plugins.
 - Environment Commands
 
 ### P2 - Enhanced
-- Task Composer UI (wired)
+- Task Composer UI (partial - not functional yet)
 - ACM Editor (loads from SRDF)
 - Kinematic Groups Editor
 - Group States Editor
