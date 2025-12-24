@@ -37,7 +37,6 @@ from widgets.ik_widget import IKWidget
 from widgets.info_panel import RobotInfoPanel
 from widgets.trajectory_player import TrajectoryPlayerWidget
 from core.state_manager import StateManager
-from core.planning import PlanningHelper
 
 
 class TesseractViewer(QMainWindow):
