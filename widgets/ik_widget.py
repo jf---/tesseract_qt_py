@@ -24,6 +24,7 @@ class IKWidget(QWidget):
 
     solutionFound = Signal(dict)  # joint_name -> value
     targetPoseSet = Signal(object)  # target pose (Isometry3d)
+    planRequested = Signal(object)  # motion plan requested - emits target Isometry3d
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -73,6 +74,11 @@ class IKWidget(QWidget):
         self.solve_btn = QPushButton("Solve IK")
         self.solve_btn.clicked.connect(self._solve_ik)
         btn_layout.addWidget(self.solve_btn)
+
+        self.plan_btn = QPushButton("Plan Motion")
+        self.plan_btn.clicked.connect(self._plan_motion)
+        btn_layout.addWidget(self.plan_btn)
+
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
@@ -80,6 +86,11 @@ class IKWidget(QWidget):
         self.status_label = QLabel("No solution")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.status_label)
+
+        # Planning status
+        self.planning_status = QLabel("")
+        self.planning_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.planning_status)
 
         layout.addStretch()
 
@@ -338,3 +349,56 @@ class IKWidget(QWidget):
 
         except Exception as e:
             print(f"Failed to set target from FK: {e}")
+
+    def _plan_motion(self):
+        """Request motion plan to target pose."""
+        if self._env is None:
+            self.planning_status.setText("No environment loaded")
+            self.planning_status.setStyleSheet("color: red;")
+            return
+
+        try:
+            # Get target pose from UI
+            x = self.x_spin.value()
+            y = self.y_spin.value()
+            z = self.z_spin.value()
+            roll = self.roll_spin.value()
+            pitch = self.pitch_spin.value()
+            yaw = self.yaw_spin.value()
+
+            # Convert RPY to transform
+            from scipy.spatial.transform import Rotation
+            import tesseract_robotics.tesseract_common as tc
+            rot = Rotation.from_euler('xyz', [roll, pitch, yaw])
+
+            # Create Isometry3d from 4x4 matrix
+            mat = np.eye(4)
+            mat[:3, :3] = rot.as_matrix()
+            mat[:3, 3] = [x, y, z]
+            target = tc.Isometry3d(mat)
+
+            # Emit planning request
+            self.planRequested.emit(target)
+            self.planning_status.setText("Planning requested...")
+            self.planning_status.setStyleSheet("color: blue;")
+
+        except Exception as e:
+            self.planning_status.setText(f"Error: {str(e)}")
+            self.planning_status.setStyleSheet("color: red;")
+            import traceback
+            traceback.print_exc()
+
+    def set_planning_status(self, message: str, success: bool = None):
+        """Update planning status label.
+
+        Args:
+            message: Status message
+            success: True=green, False=red, None=blue
+        """
+        self.planning_status.setText(message)
+        if success is True:
+            self.planning_status.setStyleSheet("color: green;")
+        elif success is False:
+            self.planning_status.setStyleSheet("color: red;")
+        else:
+            self.planning_status.setStyleSheet("color: blue;")

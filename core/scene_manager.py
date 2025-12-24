@@ -167,10 +167,9 @@ class SceneManager:
 
         elif geom_type == GT.BOX:
             source = vtk.vtkCubeSource()
-            dims = geometry.getDimensions()
-            source.SetXLength(dims[0])
-            source.SetYLength(dims[1])
-            source.SetZLength(dims[2])
+            source.SetXLength(geometry.getX())
+            source.SetYLength(geometry.getY())
+            source.SetZLength(geometry.getZ())
 
         elif geom_type in (GT.MESH, GT.CONVEX_MESH, GT.POLYGON_MESH):
             return self._create_mesh_actor(geometry)
@@ -357,6 +356,28 @@ class SceneManager:
         if link_name in self.link_actors:
             for actor in self.link_actors[link_name]:
                 actor.SetVisibility(visible)
+
+    def remove_link(self, link_name: str):
+        """Remove link actors from scene."""
+        if link_name in self.link_actors:
+            for actor in self.link_actors[link_name]:
+                self.renderer.RemoveActor(actor)
+            del self.link_actors[link_name]
+
+        # Remove associated actors
+        keys_to_remove = [k for k in self.actors if k.startswith(f"{link_name}/")]
+        for key in keys_to_remove:
+            del self.actors[key]
+
+        # Remove visual origins
+        keys_to_remove = [k for k in self._visual_origins if k.startswith(f"{link_name}/")]
+        for key in keys_to_remove:
+            del self._visual_origins[key]
+
+        # Remove frame if exists
+        if link_name in self.frame_actors:
+            self.renderer.RemoveActor(self.frame_actors[link_name])
+            del self.frame_actors[link_name]
 
     def highlight_link(self, link_name: str, highlight: bool = True):
         """Highlight link with color change."""

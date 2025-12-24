@@ -20,6 +20,7 @@ class SceneTreeWidget(QWidget):
     linkSelected = Signal(str)  # link name
     linkVisibilityChanged = Signal(str, bool)  # link name, visible
     linkFrameToggled = Signal(str, bool)  # link name, show frame
+    linkDeleteRequested = Signal(str)  # link name
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -156,29 +157,23 @@ class SceneTreeWidget(QWidget):
         menu = QMenu(self)
 
         if data[0] == "link":
-            action_show = QAction("Show Only This", self)
-            action_show.triggered.connect(lambda: self._show_only(data[1]))
-            menu.addAction(action_show)
+            link_name = data[1]
 
-            action_hide = QAction("Hide This", self)
-            action_hide.triggered.connect(lambda: self.linkVisibilityChanged.emit(data[1], False))
-            menu.addAction(action_hide)
+            # Delete Link
+            action_delete = QAction("Delete Link", self)
+            action_delete.triggered.connect(lambda: self.linkDeleteRequested.emit(link_name))
+            menu.addAction(action_delete)
 
-            menu.addSeparator()
+            # Toggle Visibility
+            is_visible = item.checkState(0) == Qt.CheckState.Checked
+            action_toggle = QAction("Toggle Visibility", self)
+            action_toggle.triggered.connect(lambda: self.linkVisibilityChanged.emit(link_name, not is_visible))
+            menu.addAction(action_toggle)
 
-            action_show_all = QAction("Show All", self)
-            action_show_all.triggered.connect(self._show_all)
-            menu.addAction(action_show_all)
-
-            menu.addSeparator()
-
+            # Show Frame
             action_frame = QAction("Show Frame", self)
-            action_frame.triggered.connect(lambda: self.linkFrameToggled.emit(data[1], True))
+            action_frame.triggered.connect(lambda: self.linkFrameToggled.emit(link_name, True))
             menu.addAction(action_frame)
-
-            action_hide_frame = QAction("Hide Frame", self)
-            action_hide_frame.triggered.connect(lambda: self.linkFrameToggled.emit(data[1], False))
-            menu.addAction(action_hide_frame)
 
         menu.exec_(self.tree.mapToGlobal(pos))
 

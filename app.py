@@ -38,6 +38,7 @@ from widgets.ik_widget import IKWidget
 from widgets.info_panel import RobotInfoPanel
 from widgets.trajectory_player import TrajectoryPlayerWidget
 from widgets.contact_compute_widget import ContactComputeWidget
+from widgets.plot_widget import PlotWidget
 from core.state_manager import StateManager
 
 
@@ -84,6 +85,12 @@ class TesseractViewer(QMainWindow):
         self.traj_player = TrajectoryPlayerWidget()
         self.traj_dock.setWidget(self.traj_player)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.traj_dock)
+
+        self.plot_dock = QDockWidget("Joint Plot", self)
+        self.plot = PlotWidget()
+        self.plot_dock.setWidget(self.plot)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.plot_dock)
+        self.tabifyDockWidget(self.traj_dock, self.plot_dock)  # Tab with trajectory
 
         self.contact_dock = QDockWidget("Contact Checker", self)
         self.contact_widget = ContactComputeWidget()
@@ -150,8 +157,11 @@ class TesseractViewer(QMainWindow):
         self.ik_widget.solutionFound.connect(self.joints.set_values)
         self.ik_widget.targetPoseSet.connect(lambda pose: (self.render.scene.show_ik_target(pose), self.render.render()))
         self.traj_player.frameChanged.connect(self._on_trajectory_frame_changed)
+        self.traj_player.frameChanged.connect(self.plot.set_frame_marker)
+        self.ik_widget.planRequested.connect(self._plan_motion)
+        self.tree.linkDeleteRequested.connect(self._delete_link)
         self.contact_widget.btn_compute.clicked.connect(self._compute_contacts)
-        self.contact_widget.btn_clear.clicked.connect(lambda: (self.render.scene.clear_contacts(), self.render.render()))
+        self.contact_widget.btn_clear.clicked.connect(self._clear_contacts)
 
         # Keyboard shortcuts
         self._setup_shortcuts()
@@ -383,6 +393,12 @@ class TesseractViewer(QMainWindow):
 
             trajectory = [Waypoint(wp.get("joints", {}), wp.get("time", 0.0)) for wp in data]
             self.traj_player.load_trajectory(trajectory)
+
+            # Load into plot widget
+            joint_names = list(self.joints.sliders.keys()) if self.joints.sliders else []
+            if joint_names:
+                self.plot.load_trajectory(data, joint_names)
+
             self.statusBar().showMessage(f"Loaded trajectory: {path} ({len(trajectory)} pts)")
             logger.info(f"Loaded {len(trajectory)} waypoints from {path}")
 
@@ -530,11 +546,125 @@ class TesseractViewer(QMainWindow):
             self.render.scene.visualize_contacts(results)
             self.render.render()
 
+            # Populate results table
+            self.contact_widget.clear_results()
+            for contact in results:
+                self.contact_widget.add_result(
+                    contact.link_names[0],
+                    contact.link_names[1],
+                    contact.distance,
+                    contact.nearest_points[0],
+                    contact.nearest_points[1],
+                    contact.normal
+                )
+            self.contact_widget.set_result_count(len(results))
+
             self.statusBar().showMessage(f"Found {len(results)} contact(s)")
 
         except Exception as e:
             logger.exception(f"Contact computation failed: {e}")
             QMessageBox.critical(self, "Error", str(e))
+
+    def _clear_contacts(self):
+        """Clear contact visualization and results table."""
+        self.render.scene.clear_contacts()
+        self.render.render()
+        self.contact_widget.clear_results()
+        self.statusBar().showMessage("Contacts cleared")
+
+    def _delete_link(self, link_name: str):
+        """Delete link from environment."""
+        if not self._env:
+            return
+
+        try:
+            # Can't delete root link
+            sg = self._env.getSceneGraph()
+            if link_name == sg.getRoot():
+                QMessageBox.warning(self, "Warning", "Cannot delete root link")
+                return
+
+            # Confirm deletion
+            reply = QMessageBox.question(
+                self, "Delete Link",
+                f"Delete link '{link_name}' and all children?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
+            # Remove from environment
+            if not self._env.removeLink(link_name):
+                QMessageBox.warning(self, "Warning", f"Failed to remove link: {link_name}")
+                return
+
+            # Refresh visualization
+            self.render.scene.remove_link(link_name)
+            self.render.render()
+            self.tree.load_environment(self._env)
+            self.statusBar().showMessage(f"Deleted link: {link_name}")
+            logger.info(f"Deleted link: {link_name}")
+
+        except Exception as e:
+            logger.exception(f"Failed to delete link: {e}")
+            QMessageBox.critical(self, "Error", str(e))
+
+    def _plan_motion(self, target):
+        """Plan motion to target pose."""
+        if not self._env:
+            self.ik_widget.set_planning_status("No environment", False)
+            return
+
+        try:
+            self.ik_widget.set_planning_status("Planning...")
+            self.statusBar().showMessage("Planning motion...")
+
+            from core.planning import PlanningHelper
+
+            # Find task composer config
+            config_path = None
+            if self._paths[1]:  # SRDF loaded
+                # Look for task_composer config in same directory
+                srdf_dir = self._paths[1].parent
+                for candidate in ["task_composer.yaml", "task_composer_config.yaml"]:
+                    cfg = srdf_dir / candidate
+                    if cfg.exists():
+                        config_path = str(cfg)
+                        break
+
+            if not config_path:
+                self.ik_widget.set_planning_status("No task composer config found", False)
+                return
+
+            # Create planner and execute
+            planner = PlanningHelper(self._env, config_path)
+            result = planner.plan_freespace([target])
+
+            if result is None:
+                self.ik_widget.set_planning_status("Planning failed", False)
+                return
+
+            # Extract trajectory
+            trajectory = planner.extract_joint_trajectory(result)
+            if not trajectory:
+                self.ik_widget.set_planning_status("No trajectory in result", False)
+                return
+
+            # Load into player
+            self.traj_player.load_trajectory(trajectory)
+
+            # Load into plot
+            joint_names = list(self.joints.sliders.keys())
+            traj_data = [{"time": wp.time, "joints": wp.joints} for wp in trajectory]
+            self.plot.load_trajectory(traj_data, joint_names)
+
+            self.ik_widget.set_planning_status(f"Success ({len(trajectory)} pts)", True)
+            self.statusBar().showMessage(f"Motion planned: {len(trajectory)} waypoints")
+            logger.info(f"Motion plan succeeded: {len(trajectory)} waypoints")
+
+        except Exception as e:
+            logger.exception(f"Motion planning failed: {e}")
+            self.ik_widget.set_planning_status(f"Error: {str(e)[:30]}", False)
 
     def _setup_shortcuts(self):
         """Setup global keyboard shortcuts."""
