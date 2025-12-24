@@ -32,12 +32,18 @@ class ManipulationWidget(QWidget):
     # Signals
     configChanged = Signal()
     modeChanged = Signal(int)
+    groupChanged = Signal(str)  # group name
+    reloadRequested = Signal()
+    stateApplyRequested = Signal(str)  # state name
+    jointValuesChanged = Signal(dict)  # joint values from slider
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._setup_ui()
         self._connect_signals()
+        # Initialize tab enabled state for default mode (Joint)
+        self._on_mode_changed(0)
 
     def _setup_ui(self):
         # Main layout
@@ -184,10 +190,32 @@ class ManipulationWidget(QWidget):
         self.mode_combo_box.currentIndexChanged.connect(self._on_mode_changed)
 
         # Config changed signals
-        self.group_combo_box.currentIndexChanged.connect(lambda: self.configChanged.emit())
+        self.group_combo_box.currentTextChanged.connect(self._on_group_changed)
         self.working_frame_combo_box.currentIndexChanged.connect(lambda: self.configChanged.emit())
         self.tcp_combo_box.currentIndexChanged.connect(lambda: self.configChanged.emit())
         self.tcp_offset_combo_box.currentIndexChanged.connect(lambda: self.configChanged.emit())
+
+        # Reload button
+        self.reload_push_button.clicked.connect(self.reloadRequested.emit)
+
+        # State apply button
+        self.apply_state_button.clicked.connect(self._on_apply_state)
+
+        # Joint slider values
+        if hasattr(self, 'joint_state_slider') and self.joint_state_slider is not None:
+            self.joint_state_slider.jointValuesChanged.connect(self.jointValuesChanged.emit)
+
+    def _on_group_changed(self, group_name: str):
+        """Handle group selection change."""
+        if group_name:
+            self.groupChanged.emit(group_name)
+            self.configChanged.emit()
+
+    def _on_apply_state(self):
+        """Handle apply state button click."""
+        state = self.state_selector_combo.currentText()
+        if state:
+            self.stateApplyRequested.emit(state)
 
     def _on_mode_changed(self, index):
         """Handle mode change and enable/disable tabs."""
@@ -211,17 +239,6 @@ class ManipulationWidget(QWidget):
         self.working_frame_combo_box.addItems(links)
         self.tcp_combo_box.addItems(links)
 
-    def set_joints(self, joints):
-        """Set available joints.
-
-        Args:
-            joints: List of joint names
-        """
-        # Update joint slider if available
-        if hasattr(self, 'joint_state_slider') and JointSliderWidget is not None:
-            # Joint slider handles joint configuration
-            pass
-
     def set_groups(self, groups):
         """Set available kinematic groups.
 
@@ -230,3 +247,54 @@ class ManipulationWidget(QWidget):
         """
         self.group_combo_box.clear()
         self.group_combo_box.addItems(groups)
+
+    def set_states(self, states: list[str]):
+        """Set available states for state selector.
+
+        Args:
+            states: List of state names
+        """
+        self.state_combo_box.clear()
+        self.state_combo_box.addItems(states)
+        self.state_selector_combo.clear()
+        self.state_selector_combo.addItems(states)
+
+    def set_joint_limits(self, joints: dict[str, tuple[float, float, float]]):
+        """Set joints with limits for joint slider.
+
+        Args:
+            joints: Dict mapping joint name to (lower, upper, current)
+        """
+        if hasattr(self, 'joint_state_slider') and self.joint_state_slider is not None:
+            self.joint_state_slider.set_joints(joints)
+
+    def set_joint_values(self, values: dict[str, float]):
+        """Set current joint values.
+
+        Args:
+            values: Dict mapping joint name to value (radians)
+        """
+        if hasattr(self, 'joint_state_slider') and self.joint_state_slider is not None:
+            self.joint_state_slider.set_values(values)
+
+    def get_joint_values(self) -> dict[str, float]:
+        """Get current joint values from slider.
+
+        Returns:
+            Dict mapping joint name to value (radians)
+        """
+        if hasattr(self, 'joint_state_slider') and self.joint_state_slider is not None:
+            return self.joint_state_slider.get_values()
+        return {}
+
+    def current_group(self) -> str:
+        """Get currently selected group name."""
+        return self.group_combo_box.currentText()
+
+    def current_tcp(self) -> str:
+        """Get currently selected TCP link."""
+        return self.tcp_combo_box.currentText()
+
+    def current_working_frame(self) -> str:
+        """Get currently selected working frame."""
+        return self.working_frame_combo_box.currentText()

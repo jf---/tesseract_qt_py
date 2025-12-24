@@ -146,3 +146,29 @@ class TaskComposerWidget(QWidget):
     def clear_log(self):
         """Clear log output."""
         self.log_output.clear()
+
+    def set_executors(self, executors: list[str], default: str | None = None):
+        """Set available executors."""
+        self.executor_combo_box.clear()
+        self.executor_combo_box.addItems(executors)
+        if default and default in executors:
+            self.executor_combo_box.setCurrentText(default)
+
+    def set_tasks(self, tasks: list[str], default: str | None = None):
+        """Set available tasks."""
+        self.task_combo_box.clear()
+        self.task_combo_box.addItems(tasks)
+        if default and default in tasks:
+            self.task_combo_box.setCurrentText(default)
+
+    def current_executor(self) -> str:
+        """Get selected executor name."""
+        return self.executor_combo_box.currentText()
+
+    def current_task(self) -> str:
+        """Get selected task name."""
+        return self.task_combo_box.currentText()
+
+    def set_environment_name(self, name: str):
+        """Set environment display name."""
+        self.environment_line_edit.setText(name)
