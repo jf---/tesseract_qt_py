@@ -335,44 +335,42 @@ class TesseractViewer(QMainWindow):
 
 
     def _load_trajectory(self):
-        """Load trajectory from JSON file."""
+        """Load trajectory via file dialog."""
         if not self._env:
             QMessageBox.information(self, "Info", "Load URDF first")
             return
-
         path, _ = QFileDialog.getOpenFileName(
             self, "Load Trajectory", "", "JSON (*.json);;All (*)"
         )
         if path:
-            try:
-                path = Path(path)
-                import json
-                with path.open("r") as f:
-                    data = json.load(f)
+            self._load_trajectory_file(path)
 
-                # Handle both formats: [...] or {"trajectory": [...]}
-                if isinstance(data, dict) and "trajectory" in data:
-                    data = data["trajectory"]
+    def _load_trajectory_file(self, path):
+        """Load trajectory from JSON file path."""
+        try:
+            path = Path(path)
+            import json
+            with path.open("r") as f:
+                data = json.load(f)
 
-                # Convert JSON to trajectory format
-                trajectory = []
-                for wp_data in data:
-                    class Waypoint:
-                        def __init__(self, joints, time=0.0):
-                            self.joints = joints
-                            self.time = time
+            # Handle both formats: [...] or {"trajectory": [...]}
+            if isinstance(data, dict) and "trajectory" in data:
+                data = data["trajectory"]
 
-                    joints = wp_data.get("joints", {})
-                    time = wp_data.get("time", 0.0)
-                    trajectory.append(Waypoint(joints, time))
+            # Convert JSON to trajectory format
+            class Waypoint:
+                def __init__(self, joints, time=0.0):
+                    self.joints = joints
+                    self.time = time
 
-                self.traj_player.load_trajectory(trajectory)
-                self.statusBar().showMessage(f"Loaded trajectory: {path}")
-                logger.info(f"Loaded {len(trajectory)} waypoints from {path}")
+            trajectory = [Waypoint(wp.get("joints", {}), wp.get("time", 0.0)) for wp in data]
+            self.traj_player.load_trajectory(trajectory)
+            self.statusBar().showMessage(f"Loaded trajectory: {path} ({len(trajectory)} pts)")
+            logger.info(f"Loaded {len(trajectory)} waypoints from {path}")
 
-            except Exception as e:
-                logger.exception(f"Failed to load trajectory: {e}")
-                QMessageBox.critical(self, "Error", f"Failed to load trajectory: {e}")
+        except Exception as e:
+            logger.exception(f"Failed to load trajectory: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to load trajectory: {e}")
 
     def _on_trajectory_frame_changed(self, frame_idx: int):
         """Update joint values when trajectory frame changes."""
@@ -483,6 +481,13 @@ class TesseractViewer(QMainWindow):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Tesseract Qt Viewer")
+    parser.add_argument("urdf", nargs="?", help="URDF file path")
+    parser.add_argument("srdf", nargs="?", help="SRDF file path")
+    parser.add_argument("--trajectory", "-t", help="Trajectory JSON file to load")
+    args = parser.parse_args()
+
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     v = TesseractViewer()
@@ -497,9 +502,12 @@ def main():
     v.raise_()
     v.activateWindow()
 
-    if len(sys.argv) > 1:
-        v.load(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)
-        v.render.vtk_widget.GetRenderWindow().Render()  # Force render after load
+    if args.urdf:
+        v.load(args.urdf, args.srdf)
+        v.render.vtk_widget.GetRenderWindow().Render()
+
+    if args.trajectory:
+        v._load_trajectory_file(args.trajectory)
 
     sys.exit(app.exec())
 
