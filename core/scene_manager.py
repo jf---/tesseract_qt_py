@@ -22,6 +22,7 @@ class SceneManager:
         self.link_actors: dict[str, list[vtk.vtkActor]] = {}
         self.path_actors: dict[str, list[vtk.vtkActor]] = {}
         self.frame_actors: dict[str, vtk.vtkAxesActor] = {}
+        self._visual_origins: dict = {}  # Visual origin transforms
         self.frame_size: float = 0.1
         self._env = None
         self._tcp_link: str | None = None
@@ -35,6 +36,7 @@ class SceneManager:
             self.renderer.RemoveActor(actor)
         self.actors.clear()
         self.link_actors.clear()
+        self._visual_origins.clear()
         self._clear_paths()
         self._clear_frames()
         self._clear_workspace()
@@ -45,6 +47,7 @@ class SceneManager:
         """Load tesseract environment into VTK scene."""
         self.clear()
         self._env = env
+        self._visual_origins = {}  # Store visual origins for transform combining
 
         scene_graph = env.getSceneGraph()
 
@@ -57,9 +60,9 @@ class SceneManager:
                 if actor is None:
                     continue
 
-                # Apply visual origin transform
-                if visual.origin is not None:
-                    actor.SetUserTransform(self._isometry_to_vtk(visual.origin))
+                # Store visual origin for later transform combining
+                key = f"{link_name}/visual_{i}"
+                self._visual_origins[key] = visual.origin
 
                 # Set material color (API returns numpy array [r,g,b,a] in 0.7.1+)
                 if visual.material is not None and visual.material.color is not None:
@@ -88,15 +91,22 @@ class SceneManager:
         """Update transforms from environment state."""
         for link_name, actors in self.link_actors.items():
             try:
-                transform = state.link_transforms[link_name]
-                vtk_transform = self._isometry_to_vtk(transform)
-                for actor in actors:
-                    # Combine link transform with visual origin
-                    actor.SetUserTransform(vtk_transform)
+                link_transform = state.link_transforms[link_name]
 
-                # Update frame if visible
+                for i, actor in enumerate(actors):
+                    key = f"{link_name}/visual_{i}"
+                    visual_origin = self._visual_origins.get(key)
+
+                    # Combine link transform with visual origin
+                    if visual_origin is not None:
+                        combined = link_transform * visual_origin
+                        actor.SetUserTransform(self._isometry_to_vtk(combined))
+                    else:
+                        actor.SetUserTransform(self._isometry_to_vtk(link_transform))
+
+                # Update frame if visible (frames don't have visual origin)
                 if link_name in self.frame_actors:
-                    self.frame_actors[link_name].SetUserTransform(vtk_transform)
+                    self.frame_actors[link_name].SetUserTransform(self._isometry_to_vtk(link_transform))
             except (KeyError, AttributeError):
                 pass
 
