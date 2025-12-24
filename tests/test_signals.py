@@ -804,6 +804,405 @@ class TestKinematicGroupsEditorSignals:
         assert len(spy) == 0  # No signal emitted
 
 
+class TestManipulationWidgetSignals:
+    """test ManipulationWidget signals."""
+
+    @pytest.fixture
+    def qapp(self):
+        try:
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance() or QApplication([])
+            yield app
+        except ImportError:
+            pytest.skip("PySide6 not installed")
+
+    def test_group_changed_signal(self, qapp):
+        """test groupChanged signal emitted when group selection changes."""
+        from widgets.manipulation_widget import ManipulationWidget
+
+        w = ManipulationWidget()
+        w.set_groups(["arm", "gripper"])
+
+        spy = SignalSpy()
+        w.groupChanged.connect(spy.slot)
+        w.group_combo_box.setCurrentIndex(1)  # Select "gripper"
+
+        assert len(spy) == 1
+        assert spy[0][0] == "gripper"
+
+    def test_mode_changed_signal(self, qapp):
+        """test modeChanged signal emitted when mode selection changes."""
+        from widgets.manipulation_widget import ManipulationWidget
+
+        w = ManipulationWidget()
+
+        spy = SignalSpy()
+        w.modeChanged.connect(spy.slot)
+        w.mode_combo_box.setCurrentIndex(1)  # Cartesian mode
+
+        assert len(spy) == 1
+        assert spy[0][0] == 1
+
+    def test_reload_requested_signal(self, qapp):
+        """test reloadRequested signal emitted when reload button clicked."""
+        from widgets.manipulation_widget import ManipulationWidget
+
+        w = ManipulationWidget()
+
+        spy = SignalSpy()
+        w.reloadRequested.connect(spy.slot)
+        w.reload_push_button.click()
+
+        assert len(spy) == 1
+
+    def test_state_apply_requested_signal(self, qapp):
+        """test stateApplyRequested signal emitted when apply button clicked."""
+        from widgets.manipulation_widget import ManipulationWidget
+
+        w = ManipulationWidget()
+        w.set_states(["home", "ready"])
+        w.state_selector_combo.setCurrentIndex(1)  # Select "ready"
+
+        spy = SignalSpy()
+        w.stateApplyRequested.connect(spy.slot)
+        w.apply_state_button.click()
+
+        assert len(spy) == 1
+        assert spy[0][0] == "ready"
+
+    def test_joint_values_changed_signal(self, qapp):
+        """test jointValuesChanged signal emitted when joint slider values change."""
+        from widgets.manipulation_widget import ManipulationWidget
+        from widgets.joint_slider import JointSliderWidget
+
+        w = ManipulationWidget()
+
+        # Only if JointSliderWidget is available
+        if not hasattr(w, 'joint_state_slider') or w.joint_state_slider is None:
+            pytest.skip("JointSliderWidget not available")
+
+        w.set_joint_limits({"joint_1": (-1.0, 1.0, 0.0)})
+
+        spy = SignalSpy()
+        w.jointValuesChanged.connect(spy.slot)
+
+        # Change joint value via spinbox (in degrees, 30 deg = ~0.5236 rad)
+        w.joint_state_slider.sliders["joint_1"].spinbox.setValue(30.0)
+
+        assert len(spy) >= 1
+        assert isinstance(spy[0][0], dict)
+        assert "joint_1" in spy[0][0]
+
+    def test_set_groups_populates_combo(self, qapp):
+        """test set_groups populates group combo box."""
+        from widgets.manipulation_widget import ManipulationWidget
+
+        w = ManipulationWidget()
+        w.set_groups(["group1", "group2", "group3"])
+
+        assert w.group_combo_box.count() == 3
+        assert w.group_combo_box.itemText(0) == "group1"
+        assert w.group_combo_box.itemText(2) == "group3"
+
+    def test_set_states_populates_combo(self, qapp):
+        """test set_states populates state combo boxes."""
+        from widgets.manipulation_widget import ManipulationWidget
+
+        w = ManipulationWidget()
+        w.set_states(["state1", "state2"])
+
+        assert w.state_combo_box.count() == 2
+        assert w.state_selector_combo.count() == 2
+        assert w.state_combo_box.itemText(0) == "state1"
+
+    def test_set_links_populates_combos(self, qapp):
+        """test set_links populates working frame and TCP combo boxes."""
+        from widgets.manipulation_widget import ManipulationWidget
+
+        w = ManipulationWidget()
+        w.set_links(["link1", "link2", "link3"])
+
+        assert w.working_frame_combo_box.count() == 3
+        assert w.tcp_combo_box.count() == 3
+        assert w.tcp_combo_box.itemText(1) == "link2"
+
+    def test_current_group_returns_selected(self, qapp):
+        """test current_group returns selected group name."""
+        from widgets.manipulation_widget import ManipulationWidget
+
+        w = ManipulationWidget()
+        w.set_groups(["arm", "leg"])
+        w.group_combo_box.setCurrentIndex(1)
+
+        assert w.current_group() == "leg"
+
+    def test_mode_change_disables_tabs(self, qapp):
+        """test mode change enables/disables correct tabs."""
+        from widgets.manipulation_widget import ManipulationWidget
+
+        w = ManipulationWidget()
+
+        # Joint mode (index 0) - Joint tab enabled, Cartesian disabled
+        w.mode_combo_box.setCurrentIndex(0)
+        assert w.tab_widget.isTabEnabled(1) is True  # Joint tab
+        assert w.tab_widget.isTabEnabled(2) is False  # Cartesian tab
+
+        # Cartesian mode (index 1) - Joint tab disabled, Cartesian enabled
+        w.mode_combo_box.setCurrentIndex(1)
+        assert w.tab_widget.isTabEnabled(1) is False  # Joint tab
+        assert w.tab_widget.isTabEnabled(2) is True  # Cartesian tab
+
+
+class TestGroupStatesEditorSignals:
+    """test GroupStatesEditorWidget signals."""
+
+    @pytest.fixture
+    def qapp(self):
+        try:
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance() or QApplication([])
+            yield app
+        except ImportError:
+            pytest.skip("PySide6 not installed")
+
+    def test_state_added_signal(self, qapp):
+        """test state_added signal emitted when add button clicked."""
+        from widgets.group_states_editor import GroupStatesEditorWidget
+
+        w = GroupStatesEditorWidget()
+        w.set_groups(["manipulator"])
+        w.group_combo.setCurrentIndex(0)
+
+        spy = SignalSpy()
+        w.state_added.connect(spy.slot)
+        w.btn_add.click()
+
+        assert len(spy) == 1
+        assert spy[0][0] == "manipulator"
+        assert spy[0][1] == "state_1"
+        assert spy[0][2] == {}  # empty values
+
+    def test_state_removed_signal(self, qapp):
+        """test state_removed signal emitted when remove button clicked."""
+        from widgets.group_states_editor import GroupStatesEditorWidget
+
+        w = GroupStatesEditorWidget()
+        w.set_groups(["arm"])
+        w.set_states({"arm": {"home": {"j1": 0.0}}})
+        w.table.selectRow(0)
+
+        spy = SignalSpy()
+        w.state_removed.connect(spy.slot)
+        w.btn_remove.click()
+
+        assert len(spy) == 1
+        assert spy[0][0] == "arm"
+        assert spy[0][1] == "home"
+
+    def test_state_applied_signal(self, qapp):
+        """test state_applied signal emitted when apply button clicked."""
+        from widgets.group_states_editor import GroupStatesEditorWidget
+
+        w = GroupStatesEditorWidget()
+        w.set_groups(["gripper"])
+        w.set_states({"gripper": {"open": {"j1": 0.5}}})
+        w.table.selectRow(0)
+
+        spy = SignalSpy()
+        w.state_applied.connect(spy.slot)
+        w.btn_apply.click()
+
+        assert len(spy) == 1
+        assert spy[0][0] == "gripper"
+        assert spy[0][1] == "open"
+
+    def test_set_groups_populates_combo(self, qapp):
+        """test set_groups populates group combo."""
+        from widgets.group_states_editor import GroupStatesEditorWidget
+
+        w = GroupStatesEditorWidget()
+        w.set_groups(["g1", "g2", "g3"])
+
+        assert w.group_combo.count() == 3
+        assert w.group_combo.itemText(1) == "g2"
+
+    def test_set_states_populates_table(self, qapp):
+        """test set_states populates table for current group."""
+        from widgets.group_states_editor import GroupStatesEditorWidget
+
+        w = GroupStatesEditorWidget()
+        w.set_groups(["arm"])
+        w.set_states({"arm": {"home": {"j1": 0.0}, "ready": {"j1": 1.0}}})
+
+        assert w.table.rowCount() == 2
+
+    def test_get_states_returns_dict(self, qapp):
+        """test get_states returns current states dict."""
+        from widgets.group_states_editor import GroupStatesEditorWidget
+
+        w = GroupStatesEditorWidget()
+        states = {"arm": {"home": {"j1": 0.0}}}
+        w.set_groups(["arm"])
+        w.set_states(states)
+
+        result = w.get_states()
+        assert result == states
+
+
+class TestTCPEditorSignals:
+    """test TCPEditorWidget signals."""
+
+    @pytest.fixture
+    def qapp(self):
+        try:
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance() or QApplication([])
+            yield app
+        except ImportError:
+            pytest.skip("PySide6 not installed")
+
+    def test_tcp_changed_signal(self, qapp):
+        """test tcp_changed signal emitted when link selection changes."""
+        from widgets.tcp_editor import TCPEditorWidget
+
+        w = TCPEditorWidget()
+        w.set_links(["base_link", "tool0", "flange"])
+
+        spy = SignalSpy()
+        w.tcp_changed.connect(spy.slot)
+        w.link_combo.setCurrentIndex(1)
+
+        assert len(spy) == 1
+        assert spy[0][0] == "tool0"
+
+    def test_offset_changed_signal(self, qapp):
+        """test offset_changed signal emitted when offset values change."""
+        from widgets.tcp_editor import TCPEditorWidget
+
+        w = TCPEditorWidget()
+
+        spy = SignalSpy()
+        w.offset_changed.connect(spy.slot)
+        w.offset_editor.x_spin.setValue(0.1)
+
+        assert len(spy) >= 1
+        assert spy[0][0] == 0.1  # x value
+
+    def test_set_links_populates_combo(self, qapp):
+        """test set_links populates link combo."""
+        from widgets.tcp_editor import TCPEditorWidget
+
+        w = TCPEditorWidget()
+        w.set_links(["link1", "link2", "link3"])
+
+        assert w.link_combo.count() == 3
+        assert w.link_combo.itemText(2) == "link3"
+
+    def test_set_tcp_selects_link(self, qapp):
+        """test set_tcp selects the specified link."""
+        from widgets.tcp_editor import TCPEditorWidget
+
+        w = TCPEditorWidget()
+        w.set_links(["base", "tool0", "flange"])
+        w.set_tcp("flange")
+
+        assert w.link_combo.currentText() == "flange"
+
+    def test_get_offset_returns_tuple(self, qapp):
+        """test get_offset returns offset as tuple."""
+        from widgets.tcp_editor import TCPEditorWidget
+
+        w = TCPEditorWidget()
+        w.offset_editor.x_spin.setValue(0.1)
+        w.offset_editor.y_spin.setValue(0.2)
+        w.offset_editor.z_spin.setValue(0.3)
+
+        offset = w.get_offset()
+        assert len(offset) == 6
+        assert offset[0] == 0.1
+        assert offset[1] == 0.2
+        assert offset[2] == 0.3
+
+    def test_reset_clears_offset(self, qapp):
+        """test reset button clears all offset values."""
+        from widgets.tcp_editor import TCPEditorWidget
+
+        w = TCPEditorWidget()
+        w.offset_editor.x_spin.setValue(0.5)
+        w.offset_editor.roll_spin.setValue(45.0)
+
+        w.reset_btn.click()
+
+        offset = w.get_offset()
+        assert all(v == 0.0 for v in offset)
+
+
+class TestTaskComposerSignals:
+    """test TaskComposerWidget signals."""
+
+    @pytest.fixture
+    def qapp(self):
+        try:
+            from PySide6.QtWidgets import QApplication
+            app = QApplication.instance() or QApplication([])
+            yield app
+        except ImportError:
+            pytest.skip("PySide6 not installed")
+
+    def test_execute_requested_signal(self, qapp):
+        """test execute_requested signal emitted when run button clicked."""
+        from widgets.task_composer_widget import TaskComposerWidget
+
+        w = TaskComposerWidget()
+
+        spy = SignalSpy()
+        w.execute_requested.connect(spy.slot)
+        w.task_run_push_button.click()
+
+        assert len(spy) == 1
+
+    def test_log_appends_text(self, qapp):
+        """test log method appends text to output."""
+        from widgets.task_composer_widget import TaskComposerWidget
+
+        w = TaskComposerWidget()
+        w.log("Test message 1")
+        w.log("Test message 2")
+
+        text = w.log_output.toPlainText()
+        assert "Test message 1" in text
+        assert "Test message 2" in text
+
+    def test_clear_log_clears_output(self, qapp):
+        """test clear_log method clears output."""
+        from widgets.task_composer_widget import TaskComposerWidget
+
+        w = TaskComposerWidget()
+        w.log("Some message")
+        assert w.log_output.toPlainText() != ""
+
+        w.clear_log()
+        assert w.log_output.toPlainText() == ""
+
+    def test_has_config_tab(self, qapp):
+        """test widget has config tab with combo boxes."""
+        from widgets.task_composer_widget import TaskComposerWidget
+
+        w = TaskComposerWidget()
+
+        assert w.tab_widget.count() == 2
+        assert w.tab_widget.tabText(0) == "Config"
+        assert w.tab_widget.tabText(1) == "Logs"
+
+    def test_has_executor_combo(self, qapp):
+        """test config tab has executor combo box."""
+        from widgets.task_composer_widget import TaskComposerWidget
+
+        w = TaskComposerWidget()
+        assert hasattr(w, 'executor_combo_box')
+        assert hasattr(w, 'task_combo_box')
+
+
 class TestScaleCoherence:
     """test VTK actor scale matches tesseract geometry."""
 
