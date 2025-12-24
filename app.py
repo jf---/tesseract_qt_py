@@ -39,6 +39,7 @@ from widgets.info_panel import RobotInfoPanel
 from widgets.trajectory_player import TrajectoryPlayerWidget
 from widgets.contact_compute_widget import ContactComputeWidget
 from widgets.plot_widget import PlotWidget
+from widgets.acm_editor import ACMEditorWidget
 from core.state_manager import StateManager
 
 
@@ -87,10 +88,16 @@ class TesseractViewer(QMainWindow):
         self.contact_dock.setWidget(self.contact_widget)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.contact_dock)
 
+        self.acm_dock = QDockWidget("ACM Editor", self)
+        self.acm_widget = ACMEditorWidget()
+        self.acm_dock.setWidget(self.acm_widget)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.acm_dock)
+
         # Tabify right panel docks
         self.tabifyDockWidget(self.joint_dock, self.ik_dock)
         self.tabifyDockWidget(self.ik_dock, self.info_dock)
         self.tabifyDockWidget(self.info_dock, self.contact_dock)
+        self.tabifyDockWidget(self.contact_dock, self.acm_dock)
         self.joint_dock.raise_()
 
         self.traj_dock = QDockWidget("Trajectory Player", self)
@@ -154,6 +161,7 @@ class TesseractViewer(QMainWindow):
         view_menu.addAction(self.traj_dock.toggleViewAction())
         view_menu.addAction(self.plot_dock.toggleViewAction())
         view_menu.addAction(self.contact_dock.toggleViewAction())
+        view_menu.addAction(self.acm_dock.toggleViewAction())
         view_menu.addSeparator()
         view_menu.addAction("Show Workspace...", self._show_workspace)
         view_menu.addAction("Clear Workspace", self._clear_workspace)
@@ -174,6 +182,9 @@ class TesseractViewer(QMainWindow):
         self.tree.linkDeleteRequested.connect(self._delete_link)
         self.contact_widget.btn_compute.clicked.connect(self._compute_contacts)
         self.contact_widget.btn_clear.clicked.connect(self._clear_contacts)
+        self.acm_widget.entry_added.connect(self._on_acm_entry_added)
+        self.acm_widget.entry_removed.connect(self._on_acm_entry_removed)
+        self.acm_widget.generate_requested.connect(self._on_acm_generate)
 
         # Keyboard shortcuts
         self._setup_shortcuts()
@@ -210,6 +221,11 @@ class TesseractViewer(QMainWindow):
                 logger.info(f"TCP link set to: {tcp_link}")
             logger.info("Setting up IK widget")
             self.ik_widget.set_environment(self._env)
+
+            # Load ACM from environment if SRDF loaded
+            if srdf:
+                self._load_acm_from_env()
+
             self.statusBar().showMessage(f"Loaded: {urdf}")
             self._add_recent(str(Path(urdf).resolve()))
             logger.success(f"Successfully loaded: {urdf}")
@@ -677,6 +693,60 @@ class TesseractViewer(QMainWindow):
         except Exception as e:
             logger.exception(f"Motion planning failed: {e}")
             self.ik_widget.set_planning_status(f"Error: {str(e)[:30]}", False)
+
+    def _on_acm_entry_added(self, link1: str, link2: str, reason: str):
+        """Handle ACM entry added."""
+        if not self._env:
+            return
+        try:
+            acm = self._env.getAllowedCollisionMatrix()
+            acm.addAllowedCollision(link1, link2, reason)
+            self.statusBar().showMessage(f"ACM: Added {link1} <-> {link2}")
+            logger.info(f"ACM entry added: {link1} <-> {link2} ({reason})")
+        except Exception as e:
+            logger.exception(f"Failed to add ACM entry: {e}")
+            QMessageBox.critical(self, "Error", str(e))
+
+    def _on_acm_entry_removed(self, link1: str, link2: str):
+        """Handle ACM entry removed."""
+        if not self._env:
+            return
+        try:
+            acm = self._env.getAllowedCollisionMatrix()
+            acm.removeAllowedCollision(link1, link2)
+            self.statusBar().showMessage(f"ACM: Removed {link1} <-> {link2}")
+            logger.info(f"ACM entry removed: {link1} <-> {link2}")
+        except Exception as e:
+            logger.exception(f"Failed to remove ACM entry: {e}")
+            QMessageBox.critical(self, "Error", str(e))
+
+    def _on_acm_generate(self, resolution: int):
+        """Handle ACM generation request."""
+        self.statusBar().showMessage(f"ACM generation requested (resolution: {resolution}) - not implemented yet")
+        logger.info(f"ACM generation requested with resolution {resolution}")
+
+    def _load_acm_from_env(self):
+        """Populate ACM widget with entries from environment."""
+        if not self._env:
+            return
+        try:
+            acm = self._env.getAllowedCollisionMatrix()
+            entries = []
+
+            # Extract ACM entries
+            link_names = acm.getAllAllowedCollisions()
+            for link1 in link_names:
+                for link2 in link_names:
+                    if link1 < link2:  # avoid duplicates
+                        if acm.isCollisionAllowed(link1, link2):
+                            # Try to get reason (may not be available in API)
+                            reason = "From SRDF"
+                            entries.append((link1, link2, reason))
+
+            self.acm_widget.set_entries(entries)
+            logger.info(f"Loaded {len(entries)} ACM entries from environment")
+        except Exception as e:
+            logger.exception(f"Failed to load ACM from environment: {e}")
 
     def _setup_shortcuts(self):
         """Setup global keyboard shortcuts."""

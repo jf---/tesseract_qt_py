@@ -5,5 +5,6 @@ __all__ = [
     "StudioMainWindow", "ManipulationWidget", "ACMEditorWidget",
     "SRDFEditorWidget", "ToolPathDialog", "KinematicGroupsEditor",
     "ContactComputeWidget", "CartesianEditorWidget", "TaskComposerWidget",
-    "LoadEnvironmentWidget", "LoadEnvironmentDialog",
+    "LoadEnvironmentWidget", "LoadEnvironmentDialog", "TCPEditorWidget",
+    "GroupStatesEditorWidget",
 ]

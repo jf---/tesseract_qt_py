@@ -1,7 +1,7 @@
 """Manipulation widget for robot control."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -16,18 +16,28 @@ from PySide6.QtWidgets import (
 )
 
 try:
-    from tesseract_qt_py.widgets.joint_slider import JointSliderWidget
+    from widgets.joint_slider import JointSliderWidget
 except ImportError:
     JointSliderWidget = None
+
+try:
+    from widgets.cartesian_editor import CartesianEditorWidget
+except ImportError:
+    CartesianEditorWidget = None
 
 
 class ManipulationWidget(QWidget):
     """Widget for robot manipulation control with multiple modes."""
 
+    # Signals
+    configChanged = Signal()
+    modeChanged = Signal(int)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._setup_ui()
+        self._connect_signals()
 
     def _setup_ui(self):
         # Main layout
@@ -124,13 +134,18 @@ class ManipulationWidget(QWidget):
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(3, 3, 3, 3)
 
-        # Cartesian editor widget placeholder
-        self.cartesian_widget = QLabel("Cartesian Editor Widget")
-        self.cartesian_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.cartesian_widget.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
-        layout.addWidget(self.cartesian_widget)
+        # Cartesian editor widget
+        if CartesianEditorWidget is not None:
+            self.cartesian_widget = CartesianEditorWidget()
+            self.cartesian_widget.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+            )
+            layout.addWidget(self.cartesian_widget)
+        else:
+            # Placeholder
+            self.cartesian_widget = QLabel("CartesianEditorWidget not available")
+            self.cartesian_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(self.cartesian_widget)
 
         # Vertical spacer
         layout.addSpacerItem(
@@ -146,12 +161,72 @@ class ManipulationWidget(QWidget):
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(3, 3, 3, 3)
 
-        # Scene state widget placeholder
-        self.state_widget = QLabel("Scene State Widget")
-        self.state_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.state_widget.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        # State selector
+        form_layout = QFormLayout()
+        self.state_selector_combo = QComboBox()
+        form_layout.addRow(QLabel("State:"), self.state_selector_combo)
+
+        self.apply_state_button = QPushButton("Apply")
+        form_layout.addRow(QLabel(""), self.apply_state_button)
+
+        layout.addLayout(form_layout)
+
+        # Vertical spacer
+        layout.addSpacerItem(
+            QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         )
-        layout.addWidget(self.state_widget)
 
         self.tab_widget.addTab(tab, "State")
+
+    def _connect_signals(self):
+        """Connect widget signals."""
+        # Mode changed
+        self.mode_combo_box.currentIndexChanged.connect(self._on_mode_changed)
+
+        # Config changed signals
+        self.group_combo_box.currentIndexChanged.connect(lambda: self.configChanged.emit())
+        self.working_frame_combo_box.currentIndexChanged.connect(lambda: self.configChanged.emit())
+        self.tcp_combo_box.currentIndexChanged.connect(lambda: self.configChanged.emit())
+        self.tcp_offset_combo_box.currentIndexChanged.connect(lambda: self.configChanged.emit())
+
+    def _on_mode_changed(self, index):
+        """Handle mode change and enable/disable tabs."""
+        if index == 0:  # Joint mode
+            self.tab_widget.setTabEnabled(1, True)  # Joint tab
+            self.tab_widget.setTabEnabled(2, False)  # Cartesian tab
+        else:  # Cartesian mode
+            self.tab_widget.setTabEnabled(1, False)  # Joint tab
+            self.tab_widget.setTabEnabled(2, True)  # Cartesian tab
+
+        self.modeChanged.emit(index)
+
+    def set_links(self, links):
+        """Set available links for working frame and TCP selection.
+
+        Args:
+            links: List of link names
+        """
+        self.working_frame_combo_box.clear()
+        self.tcp_combo_box.clear()
+        self.working_frame_combo_box.addItems(links)
+        self.tcp_combo_box.addItems(links)
+
+    def set_joints(self, joints):
+        """Set available joints.
+
+        Args:
+            joints: List of joint names
+        """
+        # Update joint slider if available
+        if hasattr(self, 'joint_state_slider') and JointSliderWidget is not None:
+            # Joint slider handles joint configuration
+            pass
+
+    def set_groups(self, groups):
+        """Set available kinematic groups.
+
+        Args:
+            groups: List of group names
+        """
+        self.group_combo_box.clear()
+        self.group_combo_box.addItems(groups)
