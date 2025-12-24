@@ -69,7 +69,22 @@ class TesseractViewer(QMainWindow):
         self._setup_status_logging()
 
     def _setup_status_logging(self):
-        """Setup loguru to also show messages in status bar."""
+        """Setup loguru to also show messages in status bar with copy context menu."""
+        from PySide6.QtWidgets import QStatusBar, QApplication
+        from PySide6.QtGui import QAction
+        from PySide6.QtCore import Qt
+
+        # Create custom status bar with context menu
+        status_bar = QStatusBar()
+        status_bar.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+
+        copy_action = QAction("Copy Message", status_bar)
+        copy_action.triggered.connect(lambda: QApplication.clipboard().setText(status_bar.currentMessage()))
+        status_bar.addAction(copy_action)
+
+        self.setStatusBar(status_bar)
+        self._last_status_message = ""
+
         def status_sink(message):
             record = message.record
             level = record["level"].name
@@ -89,6 +104,7 @@ class TesseractViewer(QMainWindow):
             # Show in status bar with color
             self.statusBar().setStyleSheet(f"color: {color};")
             self.statusBar().showMessage(text, 5000)  # 5 second timeout
+            self._last_status_message = text
 
         logger.add(status_sink, level="INFO", format="{message}")
 
@@ -956,29 +972,18 @@ class TesseractViewer(QMainWindow):
 
             if group_type == "chain":
                 base_link, tip_link = data
-                # Add chain group to kinematics info
-                from tesseract_robotics.tesseract_srdf import ChainGroup
-                chain = ChainGroup()
-                chain.append((base_link, tip_link))
-                kin_info.chain_groups[name] = chain
+                # addChainGroup(name, [(base, tip)])
+                kin_info.addChainGroup(name, [(base_link, tip_link)])
                 logger.info(f"Added chain group '{name}': {base_link} -> {tip_link}")
 
             elif group_type == "joints":
-                # Add joint group
-                from tesseract_robotics.tesseract_srdf import JointGroup
-                joint_group = JointGroup()
-                for j in data:
-                    joint_group.append(j)
-                kin_info.joint_groups[name] = joint_group
+                # addJointGroup(name, [joints])
+                kin_info.addJointGroup(name, list(data))
                 logger.info(f"Added joint group '{name}': {data}")
 
             elif group_type == "links":
-                # Add link group
-                from tesseract_robotics.tesseract_srdf import LinkGroup
-                link_group = LinkGroup()
-                for link in data:
-                    link_group.append(link)
-                kin_info.link_groups[name] = link_group
+                # addLinkGroup(name, [links])
+                kin_info.addLinkGroup(name, list(data))
                 logger.info(f"Added link group '{name}': {data}")
 
             self.statusBar().showMessage(f"Group '{name}' ({group_type}) added")
@@ -1000,16 +1005,16 @@ class TesseractViewer(QMainWindow):
         try:
             kin_info = self._env.getKinematicsInformation()
 
-            # Try to remove from all group types
+            # Try to remove from all group types using proper methods
             removed = False
-            if name in kin_info.chain_groups:
-                del kin_info.chain_groups[name]
+            if kin_info.hasChainGroup(name):
+                kin_info.removeChainGroup(name)
                 removed = True
-            if name in kin_info.joint_groups:
-                del kin_info.joint_groups[name]
+            if kin_info.hasJointGroup(name):
+                kin_info.removeJointGroup(name)
                 removed = True
-            if name in kin_info.link_groups:
-                del kin_info.link_groups[name]
+            if kin_info.hasLinkGroup(name):
+                kin_info.removeLinkGroup(name)
                 removed = True
 
             if removed:
