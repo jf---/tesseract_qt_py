@@ -65,6 +65,35 @@ class TesseractViewer(QMainWindow):
         self._recent_actions = []
         self.state_mgr = StateManager()
         self._setup()
+        self._setup_status_logging()
+
+    def _setup_status_logging(self):
+        """Setup loguru to also show messages in status bar."""
+        def status_sink(message):
+            record = message.record
+            level = record["level"].name
+            text = record["message"]
+
+            # Color coding by level
+            colors = {
+                "DEBUG": "#888888",
+                "INFO": "#000000",
+                "SUCCESS": "#228B22",
+                "WARNING": "#FF8C00",
+                "ERROR": "#DC143C",
+                "CRITICAL": "#8B0000",
+            }
+            color = colors.get(level, "#000000")
+
+            # Show in status bar with color
+            self.statusBar().setStyleSheet(f"color: {color};")
+            self.statusBar().showMessage(text, 5000)  # 5 second timeout
+
+        logger.add(status_sink, level="INFO", format="{message}")
+
+    def status(self, msg: str, level: str = "info"):
+        """Show message in status bar and log it."""
+        getattr(logger, level.lower())(msg)
 
     def _setup(self):
         # Widgets
@@ -221,6 +250,11 @@ class TesseractViewer(QMainWindow):
         self.acm_widget.entry_added.connect(self._on_acm_entry_added)
         self.acm_widget.entry_removed.connect(self._on_acm_entry_removed)
         self.acm_widget.generate_requested.connect(self._on_acm_generate)
+        self.tcp_widget.tcp_changed.connect(self._on_tcp_changed)
+        self.tcp_widget.offset_changed.connect(self._on_tcp_offset_changed)
+        self.kin_groups_widget.group_added.connect(self._on_kin_group_added)
+        self.group_states_widget.state_applied.connect(self._on_group_state_applied)
+        self.group_states_widget.state_added.connect(self._on_group_state_added)
 
         # Keyboard shortcuts
         self._setup_shortcuts()
@@ -257,6 +291,9 @@ class TesseractViewer(QMainWindow):
                 logger.info(f"TCP link set to: {tcp_link}")
             logger.info("Setting up IK widget")
             self.ik_widget.set_environment(self._env)
+
+            # Populate P2 widgets
+            self._populate_p2_widgets()
 
             # Load ACM from environment if SRDF loaded
             if srdf:
@@ -778,6 +815,138 @@ class TesseractViewer(QMainWindow):
         """Handle ACM generation request."""
         self.statusBar().showMessage(f"ACM generation requested (resolution: {resolution}) - not implemented yet")
         logger.info(f"ACM generation requested with resolution {resolution}")
+
+    def _on_tcp_changed(self, link_name: str):
+        """Handle TCP link change."""
+        try:
+            self.render.scene.set_tcp_link(link_name)
+            self.info_panel.set_tcp_link(link_name)
+            self.render.render()
+            self.statusBar().showMessage(f"TCP set to: {link_name}")
+            logger.info(f"TCP changed to: {link_name}")
+        except Exception as e:
+            logger.exception(f"Failed to set TCP: {e}")
+
+    def _on_tcp_offset_changed(self, x: float, y: float, z: float, rx: float, ry: float, rz: float):
+        """Handle TCP offset change."""
+        self.statusBar().showMessage(f"TCP offset: [{x:.3f}, {y:.3f}, {z:.3f}] [{rx:.1f}°, {ry:.1f}°, {rz:.1f}°]")
+        logger.info(f"TCP offset changed: pos=[{x}, {y}, {z}], rot=[{rx}, {ry}, {rz}]")
+
+    def _on_kin_group_added(self, name: str, group_type: str, data: object):
+        """Handle kinematic group added."""
+        self.statusBar().showMessage(f"Group '{name}' ({group_type}) added")
+        logger.info(f"Kinematic group added: {name} type={group_type} data={data}")
+        # Refresh group lists in other widgets
+        groups = self._get_group_names()
+        groups.append(name)
+        self.manip_widget.set_groups(list(set(groups)))
+        self.group_states_widget.set_groups(list(set(groups)))
+
+    def _on_group_state_added(self, group: str, state_name: str, values: dict):
+        """Handle new state added - populate with current joint values."""
+        try:
+            current_values = self.joints.get_values()
+            # Update the state with current joint values
+            states = self.group_states_widget.get_states()
+            if group in states and state_name in states[group]:
+                states[group][state_name] = current_values
+                self.group_states_widget.set_states(states)
+            self.statusBar().showMessage(f"Added state '{state_name}' with current joint values")
+            logger.info(f"Group state added: {group}/{state_name}")
+        except Exception as e:
+            logger.exception(f"Failed to add group state: {e}")
+
+    def _on_group_state_applied(self, group: str, state_name: str):
+        """Handle group state applied."""
+        try:
+            states = self.group_states_widget.get_states()
+            if group in states and state_name in states[group]:
+                joint_values = states[group][state_name]
+                self.joints.set_values(joint_values)
+                self._on_joint_changed(joint_values)
+                self.statusBar().showMessage(f"Applied state '{state_name}' for group '{group}'")
+                logger.info(f"Group state applied: {group}/{state_name} with {len(joint_values)} joints")
+            else:
+                logger.warning(f"State not found: {group}/{state_name}")
+        except Exception as e:
+            logger.exception(f"Failed to apply group state: {e}")
+
+    def _populate_p2_widgets(self):
+        """Populate P2 widgets with environment data."""
+        if not self._env:
+            return
+
+        try:
+            sg = self._env.getSceneGraph()
+
+            # Get all link names
+            links = [link.getName() for link in sg.getLinks()]
+
+            # Get all joint names
+            movable = (JointType.REVOLUTE, JointType.CONTINUOUS, JointType.PRISMATIC)
+            joints = [j.getName() for j in sg.getJoints() if j.type in movable]
+
+            # Populate Kinematic Groups Editor
+            self.kin_groups_widget.set_links(links)
+            self.kin_groups_widget.set_joints(joints)
+
+            # Populate Manipulation Widget
+            self.manip_widget.set_links(links)
+            groups = self._get_group_names()
+            logger.info(f"Setting groups for widgets: {groups}")
+            self.manip_widget.set_groups(groups)
+
+            # Populate Group States Editor
+            self.group_states_widget.set_groups(groups)
+            self._load_group_states_from_env()
+
+            # Populate TCP Editor
+            self.tcp_widget.set_links(links)
+            tcp_link = self._detect_tcp_link()
+            if tcp_link:
+                self.tcp_widget.set_tcp(tcp_link)
+
+            logger.info("P2 widgets populated")
+
+        except Exception as e:
+            logger.exception(f"Failed to populate P2 widgets: {e}")
+
+    def _load_group_states_from_env(self):
+        """Load group states from SRDF into widget."""
+        try:
+            kin_info = self._env.getKinematicsInformation()
+            if not kin_info or not hasattr(kin_info, 'group_states'):
+                return
+
+            states = {}  # {group: {state_name: {joint: value}}}
+            for group_name, group_states in kin_info.group_states.items():
+                if group_name not in states:
+                    states[group_name] = {}
+                for state_name, joint_state in group_states.items():
+                    states[group_name][state_name] = dict(joint_state)
+
+            self.group_states_widget.set_states(states)
+            logger.info(f"Loaded {sum(len(s) for s in states.values())} group states from SRDF")
+        except Exception as e:
+            logger.exception(f"Failed to load group states: {e}")
+
+    def _get_group_names(self) -> list[str]:
+        """Get kinematic group names from environment."""
+        try:
+            kin_info = self._env.getKinematicsInformation()
+            groups = []
+            if kin_info:
+                if hasattr(kin_info, 'chain_groups'):
+                    groups.extend(kin_info.chain_groups.keys())
+                if hasattr(kin_info, 'joint_groups'):
+                    groups.extend(kin_info.joint_groups.keys())
+                if hasattr(kin_info, 'link_groups'):
+                    groups.extend(kin_info.link_groups.keys())
+            logger.debug(f"Found kinematic groups: {groups}")
+            return list(set(groups))
+        except Exception as e:
+            logger.exception(f"Failed to get group names: {e}")
+            return []
 
     def _load_acm_from_env(self):
         """Populate ACM widget with entries from environment."""
