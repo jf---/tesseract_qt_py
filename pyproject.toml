@@ -21,6 +21,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+    "pytest-qt>=4.3.0",
     "ruff",
 ]
 
@@ -48,3 +49,5 @@ select = ["E", "F", "I", "UP"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v --tb=short"
+qt_api = "pyside6"
+qt_default_raising = true
