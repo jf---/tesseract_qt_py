@@ -256,8 +256,21 @@ class RenderWidget(QWidget):
                     return
 
     def _on_reset_view(self):
-        """Reset camera view."""
+        """Reset camera view to fit robot only (excludes grid)."""
+        # Temporarily hide grid/workspace to exclude from bounds
+        grid_vis = self.grid_actor.GetVisibility()
+        self.grid_actor.SetVisibility(False)
+        ws_actor = getattr(self.scene, 'workspace_actor', None)
+        ws_vis = ws_actor.GetVisibility() if ws_actor else False
+        if ws_actor:
+            ws_actor.SetVisibility(False)
+
         self.camera_ctrl.reset_view()
+
+        # Restore visibility
+        self.grid_actor.SetVisibility(grid_vis)
+        if ws_actor:
+            ws_actor.SetVisibility(ws_vis)
 
     def _on_toggle_ortho(self, checked: bool):
         """Toggle orthographic projection."""
