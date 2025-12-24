@@ -48,6 +48,7 @@ from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
 from widgets.manipulation_widget import ManipulationWidget
 from widgets.group_states_editor import GroupStatesEditorWidget
 from widgets.tcp_editor import TCPEditorWidget
+from widgets.task_composer_widget import TaskComposerWidget
 from core.state_manager import StateManager
 
 
@@ -150,6 +151,11 @@ class TesseractViewer(QMainWindow):
         self.tcp_dock.setWidget(self.tcp_widget)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.tcp_dock)
 
+        self.task_composer_dock = QDockWidget("Task Composer", self)
+        self.task_composer_widget = TaskComposerWidget()
+        self.task_composer_dock.setWidget(self.task_composer_widget)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.task_composer_dock)
+
         # Tabify right panel docks
         self.tabifyDockWidget(self.joint_dock, self.ik_dock)
         self.tabifyDockWidget(self.ik_dock, self.info_dock)
@@ -159,6 +165,7 @@ class TesseractViewer(QMainWindow):
         self.tabifyDockWidget(self.kin_groups_dock, self.manip_dock)
         self.tabifyDockWidget(self.manip_dock, self.group_states_dock)
         self.tabifyDockWidget(self.group_states_dock, self.tcp_dock)
+        self.tabifyDockWidget(self.tcp_dock, self.task_composer_dock)
         self.joint_dock.raise_()
 
         self.traj_dock = QDockWidget("Trajectory Player", self)
@@ -227,6 +234,7 @@ class TesseractViewer(QMainWindow):
         view_menu.addAction(self.manip_dock.toggleViewAction())
         view_menu.addAction(self.group_states_dock.toggleViewAction())
         view_menu.addAction(self.tcp_dock.toggleViewAction())
+        view_menu.addAction(self.task_composer_dock.toggleViewAction())
         view_menu.addSeparator()
         view_menu.addAction("Show Workspace...", self._show_workspace)
         view_menu.addAction("Clear Workspace", self._clear_workspace)
@@ -234,6 +242,7 @@ class TesseractViewer(QMainWindow):
         # Connections
         self.joints.jointValuesChanged.connect(self.render.update_joint_values)
         self.joints.jointValuesChanged.connect(self.info_panel.update_joint_values)
+        self.joints.jointValuesChanged.connect(self.ik_widget.update_current_tcp_pose)
         self.tree.linkSelected.connect(lambda n: (self.render.scene.highlight_link(n), self.render.render()))
         self.tree.linkSelected.connect(self.info_panel.set_tcp_link)
         self.tree.linkVisibilityChanged.connect(lambda n, v: (self.render.scene.set_link_visibility(n, v), self.render.render()))
@@ -255,6 +264,7 @@ class TesseractViewer(QMainWindow):
         self.kin_groups_widget.group_added.connect(self._on_kin_group_added)
         self.group_states_widget.state_applied.connect(self._on_group_state_applied)
         self.group_states_widget.state_added.connect(self._on_group_state_added)
+        self.task_composer_widget.execute_requested.connect(self._execute_task_composer)
 
         # Keyboard shortcuts
         self._setup_shortcuts()
@@ -291,6 +301,7 @@ class TesseractViewer(QMainWindow):
                 logger.info(f"TCP link set to: {tcp_link}")
             logger.info("Setting up IK widget")
             self.ik_widget.set_environment(self._env)
+            self.ik_widget.set_scene_manager(self.render.scene)
 
             # Populate P2 widgets
             self._populate_p2_widgets()
@@ -788,6 +799,103 @@ class TesseractViewer(QMainWindow):
             logger.exception(f"Motion planning failed: {e}")
             self.ik_widget.set_planning_status(f"Error: {str(e)[:30]}", False)
 
+    def _execute_task_composer(self):
+        """Execute motion planning via task composer."""
+        if not self._env:
+            self.task_composer_widget.log("Error: No environment loaded")
+            self.statusBar().showMessage("No environment loaded")
+            return
+
+        try:
+            self.task_composer_widget.clear_log()
+            self.task_composer_widget.log("Starting task composer execution...")
+            self.statusBar().showMessage("Executing task composer...")
+
+            # Try to use PlanningHelper if available
+            try:
+                from core.planning import PlanningHelper, HAS_LEGACY_API
+
+                if not HAS_LEGACY_API:
+                    self.task_composer_widget.log("Error: Planning API not available")
+                    self.task_composer_widget.log("PlanningTaskComposerProblemUPtr not found in this version")
+                    self.statusBar().showMessage("Planning API not available")
+                    return
+
+                # Find task composer config
+                config_path = None
+                if self._paths[1]:  # SRDF loaded
+                    srdf_dir = self._paths[1].parent
+                    for candidate in ["task_composer.yaml", "task_composer_config.yaml"]:
+                        cfg = srdf_dir / candidate
+                        if cfg.exists():
+                            config_path = str(cfg)
+                            break
+
+                if not config_path:
+                    self.task_composer_widget.log("Error: No task composer config found")
+                    self.task_composer_widget.log("Looking for task_composer.yaml in SRDF directory")
+                    self.statusBar().showMessage("No task composer config found")
+                    return
+
+                self.task_composer_widget.log(f"Using config: {config_path}")
+
+                # Get current TCP pose as target
+                tcp_link = self.info_panel.tcp_link if hasattr(self.info_panel, 'tcp_link') else None
+                if not tcp_link:
+                    self.task_composer_widget.log("Error: No TCP link detected")
+                    self.statusBar().showMessage("No TCP link detected")
+                    return
+
+                # Get current joint values and FK to get target pose
+                state = self._env.getState()
+                current_pose = state.link_transforms.get(tcp_link)
+                if not current_pose:
+                    self.task_composer_widget.log(f"Error: Cannot get pose for TCP link '{tcp_link}'")
+                    self.statusBar().showMessage("Cannot get TCP pose")
+                    return
+
+                self.task_composer_widget.log(f"Planning from current state to TCP: {tcp_link}")
+
+                # Create planner and execute
+                planner = PlanningHelper(self._env, config_path)
+                result = planner.plan_freespace([current_pose])
+
+                if result is None:
+                    self.task_composer_widget.log("Planning failed - no result returned")
+                    self.statusBar().showMessage("Planning failed")
+                    return
+
+                # Extract trajectory
+                trajectory = planner.extract_joint_trajectory(result)
+                if not trajectory:
+                    self.task_composer_widget.log("Warning: No trajectory in result")
+                    self.statusBar().showMessage("No trajectory in result")
+                    return
+
+                self.task_composer_widget.log(f"Success! Generated {len(trajectory)} waypoints")
+
+                # Load into player
+                self.traj_player.load_trajectory(trajectory)
+
+                # Load into plot
+                joint_names = list(self.joints.sliders.keys())
+                traj_data = [{"time": wp.time, "joints": wp.joints} for wp in trajectory]
+                self.plot.load_trajectory(traj_data, joint_names)
+
+                self.statusBar().showMessage(f"Planning succeeded: {len(trajectory)} waypoints")
+                logger.info(f"Task composer execution succeeded: {len(trajectory)} waypoints")
+
+            except ImportError as ie:
+                # Fallback if PlanningHelper not available
+                self.task_composer_widget.log(f"Error: Cannot import PlanningHelper: {ie}")
+                self.task_composer_widget.log("Fallback: Task composer execution would run here")
+                self.statusBar().showMessage("Planning helper not available")
+
+        except Exception as e:
+            logger.exception(f"Task composer execution failed: {e}")
+            self.task_composer_widget.log(f"Error: {str(e)}")
+            self.statusBar().showMessage(f"Execution failed: {str(e)[:50]}")
+
     def _on_acm_entry_added(self, link1: str, link2: str, reason: str):
         """Handle ACM entry added."""
         if not self._env:
@@ -893,6 +1001,9 @@ class TesseractViewer(QMainWindow):
             self.kin_groups_widget.set_links(links)
             self.kin_groups_widget.set_joints(joints)
 
+            # Populate ACM Editor with links for dropdown
+            self.acm_widget.set_links(links)
+
             # Populate Manipulation Widget
             self.manip_widget.set_links(links)
             groups = self._get_group_names()
@@ -959,20 +1070,15 @@ class TesseractViewer(QMainWindow):
             acm = self._env.getAllowedCollisionMatrix()
             entries = []
 
-            # Extract ACM entries
-            link_names = acm.getAllAllowedCollisions()
-            for link1 in link_names:
-                for link2 in link_names:
-                    if link1 < link2:  # avoid duplicates
-                        if acm.isCollisionAllowed(link1, link2):
-                            # Try to get reason (may not be available in API)
-                            reason = "From SRDF"
-                            entries.append((link1, link2, reason))
+            # getAllAllowedCollisions returns dict of (link1, link2) -> reason
+            all_collisions = acm.getAllAllowedCollisions()
+            for (link1, link2), reason in all_collisions.items():
+                entries.append((link1, link2, reason or "From SRDF"))
 
             self.acm_widget.set_entries(entries)
             logger.info(f"Loaded {len(entries)} ACM entries from environment")
         except Exception as e:
-            logger.exception(f"Failed to load ACM from environment: {e}")
+            logger.error(f"Failed to load ACM from environment: {e}")
 
     def _setup_shortcuts(self):
         """Setup global keyboard shortcuts."""

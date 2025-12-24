@@ -6,29 +6,37 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QSlider,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
     QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QAbstractItemView,
+    QComboBox,
 )
 
 
 class AddACMEntryDialog(QDialog):
     """Dialog to add an allowed collision entry."""
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, links: list[str] | None = None, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Add Allowed Collision Entry")
         self.resize(400, 150)
+        self._links = sorted(links) if links else []
         self._setup_ui()
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
 
         form = QFormLayout()
-        self.link1_edit = QLineEdit()
-        self.link2_edit = QLineEdit()
+        self.link1_combo = QComboBox()
+        self.link1_combo.addItems(self._links)
+        self.link1_combo.setEditable(True)
+
+        self.link2_combo = QComboBox()
+        self.link2_combo.addItems(self._links)
+        self.link2_combo.setEditable(True)
+
         self.reason_edit = QLineEdit()
         self.reason_edit.setText("User defined")
 
-        form.addRow("Link 1:", self.link1_edit)
-        form.addRow("Link 2:", self.link2_edit)
+        form.addRow("Link 1:", self.link1_combo)
+        form.addRow("Link 2:", self.link2_combo)
         form.addRow("Reason:", self.reason_edit)
         layout.addLayout(form)
 
@@ -43,8 +51,8 @@ class AddACMEntryDialog(QDialog):
         """Return (link1, link2, reason) or None if cancelled."""
         if self.exec() == QDialog.DialogCode.Accepted:
             return (
-                self.link1_edit.text().strip(),
-                self.link2_edit.text().strip(),
+                self.link1_combo.currentText().strip(),
+                self.link2_combo.currentText().strip(),
                 self.reason_edit.text().strip(),
             )
         return None
@@ -60,7 +68,12 @@ class ACMEditorWidget(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
+        self._links: list[str] = []
         self._setup_ui()
+
+    def set_links(self, links: list[str]):
+        """Set available links for dropdown selection."""
+        self._links = sorted(links)
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -124,7 +137,7 @@ class ACMEditorWidget(QWidget):
         self.generate_requested.emit(self.resolution_slider.value())
 
     def _on_add(self):
-        dlg = AddACMEntryDialog(self)
+        dlg = AddACMEntryDialog(self._links, self)
         entry = dlg.get_entry()
         if entry and entry[0] and entry[1]:
             self.add_entry(*entry)

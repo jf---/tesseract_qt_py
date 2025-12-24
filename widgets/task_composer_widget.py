@@ -1,7 +1,7 @@
 """Task composer widget for motion planning."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QFrame,
     QTreeView,
+    QPlainTextEdit,
     QSizePolicy,
     QAbstractItemView,
 )
@@ -22,6 +23,8 @@ from PySide6.QtWidgets import (
 
 class TaskComposerWidget(QWidget):
     """Task composer widget for motion planning configuration and execution."""
+
+    execute_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -96,9 +99,10 @@ class TaskComposerWidget(QWidget):
         logs_tab = QWidget()
         logs_layout = QVBoxLayout(logs_tab)
 
-        self.log_tree_view = QTreeView()
-        self.log_tree_view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        logs_layout.addWidget(self.log_tree_view)
+        self.log_output = QPlainTextEdit()
+        self.log_output.setReadOnly(True)
+        self.log_output.setPlaceholderText("Planning output will appear here...")
+        logs_layout.addWidget(self.log_output)
 
         self.tab_widget.addTab(logs_tab, "Logs")
 
@@ -130,6 +134,15 @@ class TaskComposerWidget(QWidget):
 
         self.task_run_push_button = QPushButton("run")
         self.task_run_push_button.setMaximumSize(50, 16777215)
+        self.task_run_push_button.clicked.connect(self.execute_requested.emit)
         bottom_layout.addWidget(self.task_run_push_button)
 
         main_layout.addWidget(bottom_frame)
+
+    def log(self, message: str):
+        """Append message to log output."""
+        self.log_output.appendPlainText(message)
+
+    def clear_log(self):
+        """Clear log output."""
+        self.log_output.clear()

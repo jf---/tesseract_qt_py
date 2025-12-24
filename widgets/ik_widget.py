@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
 
 from tesseract_robotics.tesseract_kinematics import KinGroupIKInput
 
+from widgets.info_panel import rotation_matrix_to_rpy
+
 
 class IKWidget(QWidget):
     """Inverse kinematics solver widget."""
@@ -33,6 +35,7 @@ class IKWidget(QWidget):
         self._link_names = []
         self._joint_names = []
         self._joint_limits = {}  # joint_name -> (lower, upper)
+        self._scene_manager = None
         self._setup_ui()
 
     def _setup_ui(self):
@@ -69,6 +72,19 @@ class IKWidget(QWidget):
 
         layout.addWidget(ee_group)
 
+        # Current TCP pose display
+        current_tcp_group = QGroupBox("Current TCP Pose")
+        current_tcp_group.setCheckable(True)
+        current_tcp_group.setChecked(True)
+        current_tcp_layout = QVBoxLayout(current_tcp_group)
+
+        self.current_tcp_xyz_label = QLabel("XYZ: -")
+        self.current_tcp_rpy_label = QLabel("RPY (deg): -")
+        current_tcp_layout.addWidget(self.current_tcp_xyz_label)
+        current_tcp_layout.addWidget(self.current_tcp_rpy_label)
+
+        layout.addWidget(current_tcp_group)
+
         # Solve button
         btn_layout = QHBoxLayout()
         self.solve_btn = QPushButton("Solve IK")
@@ -101,6 +117,10 @@ class IKWidget(QWidget):
         spin.setDecimals(4)
         spin.setFixedWidth(100)
         return spin
+
+    def set_scene_manager(self, scene_manager):
+        """Set scene manager for FK calculations."""
+        self._scene_manager = scene_manager
 
     def set_environment(self, env):
         """Set tesseract environment."""
@@ -402,3 +422,46 @@ class IKWidget(QWidget):
             self.planning_status.setStyleSheet("color: red;")
         else:
             self.planning_status.setStyleSheet("color: blue;")
+
+    def update_current_tcp_pose(self, joint_values: dict[str, float]):
+        """Update current TCP pose display from joint values.
+
+        Args:
+            joint_values: Current joint positions (radians)
+        """
+        if self._scene_manager is None or self._env is None:
+            self.current_tcp_xyz_label.setText("XYZ: -")
+            self.current_tcp_rpy_label.setText("RPY (deg): -")
+            return
+
+        tcp_link = self.link_combo.currentText()
+        if not tcp_link:
+            self.current_tcp_xyz_label.setText("XYZ: -")
+            self.current_tcp_rpy_label.setText("RPY (deg): -")
+            return
+
+        try:
+            # Get TCP pose via FK
+            tcp_pose = self._scene_manager.get_tcp_pose(joint_values, tcp_link)
+            if tcp_pose is None:
+                self.current_tcp_xyz_label.setText("XYZ: -")
+                self.current_tcp_rpy_label.setText("RPY (deg): -")
+                return
+
+            # Extract position
+            matrix = tcp_pose.matrix()
+            x, y, z = matrix[0, 3], matrix[1, 3], matrix[2, 3]
+            self.current_tcp_xyz_label.setText(f"XYZ: {x:.4f}, {y:.4f}, {z:.4f}")
+
+            # Extract orientation (RPY in degrees)
+            R = matrix[:3, :3]
+            roll, pitch, yaw = rotation_matrix_to_rpy(R)
+            roll_deg = np.rad2deg(roll)
+            pitch_deg = np.rad2deg(pitch)
+            yaw_deg = np.rad2deg(yaw)
+            self.current_tcp_rpy_label.setText(f"RPY (deg): {roll_deg:.2f}, {pitch_deg:.2f}, {yaw_deg:.2f}")
+
+        except Exception as e:
+            print(f"Failed to update current TCP pose: {e}")
+            self.current_tcp_xyz_label.setText("XYZ: -")
+            self.current_tcp_rpy_label.setText("RPY (deg): -")
