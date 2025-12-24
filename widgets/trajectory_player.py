@@ -149,9 +149,9 @@ class TrajectoryPlayerWidget(QWidget):
         if not self._playing or self._frame_count == 0:
             return
 
-        # Increment based on speed
-        # Assume ~30ms per frame, get time delta from trajectory
-        self._frame += 1
+        # Increment based on speed multiplier
+        # Speed 1.0 = 1 frame per tick, 2.0 = 2 frames, 0.5 = 0.5 frames
+        self._frame += self._speed
 
         if self._frame >= self._frame_count:
             if self._frame_count > 0:
@@ -161,11 +161,11 @@ class TrajectoryPlayerWidget(QWidget):
                 return
 
         self._updating = True
-        self.slider.setValue(self._frame)
+        self.slider.setValue(int(self._frame))
         self._updating = False
 
         self._update_labels()
-        self.frameChanged.emit(self._frame)
+        self.frameChanged.emit(int(self._frame))
 
     def _on_slider_changed(self, value: int):
         """Handle manual scrubbing."""
@@ -182,13 +182,14 @@ class TrajectoryPlayerWidget(QWidget):
 
     def _update_labels(self):
         """Update frame/time displays."""
-        self.frame_label.setText(f"{self._frame} / {max(0, self._frame_count - 1)}")
+        frame_idx = int(self._frame)
+        self.frame_label.setText(f"{frame_idx} / {max(0, self._frame_count - 1)}")
 
         # Get timestamp from trajectory if available
         time = 0.0
-        if self._trajectory and self._frame_count > 0 and self._frame < self._frame_count:
+        if self._trajectory and self._frame_count > 0 and frame_idx < self._frame_count:
             try:
-                waypoint = self._trajectory[self._frame]
+                waypoint = self._trajectory[frame_idx]
                 # Try common attributes for time
                 if hasattr(waypoint, 'time'):
                     time = waypoint.time
@@ -201,7 +202,7 @@ class TrajectoryPlayerWidget(QWidget):
 
     def get_frame(self) -> int:
         """Get current frame index."""
-        return self._frame
+        return int(self._frame)
 
     def set_frame(self, frame: int):
         """Jump to specific frame."""
@@ -219,6 +220,7 @@ class TrajectoryPlayerWidget(QWidget):
 
     def get_waypoint(self):
         """Get current waypoint from trajectory."""
-        if self._trajectory and 0 <= self._frame < self._frame_count:
-            return self._trajectory[self._frame]
+        frame_idx = int(self._frame)
+        if self._trajectory and 0 <= frame_idx < self._frame_count:
+            return self._trajectory[frame_idx]
         return None

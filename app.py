@@ -35,7 +35,9 @@ from widgets.joint_slider import JointSliderWidget
 from widgets.scene_tree import SceneTreeWidget
 from widgets.ik_widget import IKWidget
 from widgets.info_panel import RobotInfoPanel
+from widgets.trajectory_player import TrajectoryPlayerWidget
 from core.state_manager import StateManager
+from core.planning import PlanningHelper
 
 
 class TesseractViewer(QMainWindow):
@@ -77,6 +79,11 @@ class TesseractViewer(QMainWindow):
         self.info_dock.setWidget(self.info_panel)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.info_dock)
 
+        self.traj_dock = QDockWidget("Trajectory Player", self)
+        self.traj_player = TrajectoryPlayerWidget()
+        self.traj_dock.setWidget(self.traj_player)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.traj_dock)
+
         self.setStatusBar(QStatusBar())
 
         # Menu
@@ -94,6 +101,8 @@ class TesseractViewer(QMainWindow):
             self._recent_menu.addAction(act)
         self._update_recent_menu()
 
+        file_menu.addSeparator()
+        file_menu.addAction("Load Trajectory...", self._load_trajectory)
         file_menu.addSeparator()
         file_menu.addAction("Reload", self._reload, QKeySequence.StandardKey.Refresh)
         file_menu.addSeparator()
@@ -118,15 +127,18 @@ class TesseractViewer(QMainWindow):
         view_menu.addAction(self.joint_dock.toggleViewAction())
         view_menu.addAction(self.ik_dock.toggleViewAction())
         view_menu.addAction(self.info_dock.toggleViewAction())
+        view_menu.addAction(self.traj_dock.toggleViewAction())
 
         # Connections
         self.joints.jointValuesChanged.connect(self.render.update_joint_values)
         self.joints.jointValuesChanged.connect(self.info_panel.update_joint_values)
         self.tree.linkSelected.connect(lambda n: (self.render.scene.highlight_link(n), self.render.render()))
+        self.tree.linkSelected.connect(self.info_panel.set_tcp_link)
         self.tree.linkVisibilityChanged.connect(lambda n, v: (self.render.scene.set_link_visibility(n, v), self.render.render()))
         self.tree.linkFrameToggled.connect(lambda n, v: (self.render.scene.show_frame(n, v), self.render.render()))
         self.render.linkClicked.connect(self.tree.select_link)
         self.ik_widget.solutionFound.connect(self.joints.set_values)
+        self.traj_player.frameChanged.connect(self._on_trajectory_frame_changed)
 
         # Keyboard shortcuts
         self._setup_shortcuts()
@@ -156,7 +168,12 @@ class TesseractViewer(QMainWindow):
             self._setup_joints()
             logger.info("Joints setup, loading info panel")
             self.info_panel.load_environment(self._env)
-            logger.info("Info panel loaded, setting up IK widget")
+            logger.info("Info panel loaded, detecting TCP link")
+            tcp_link = self._detect_tcp_link()
+            if tcp_link:
+                self.info_panel.set_tcp_link(tcp_link)
+                logger.info(f"TCP link set to: {tcp_link}")
+            logger.info("Setting up IK widget")
             self.ik_widget.set_environment(self._env)
             self.statusBar().showMessage(f"Loaded: {urdf}")
             self._add_recent(str(Path(urdf).resolve()))
@@ -176,6 +193,33 @@ class TesseractViewer(QMainWindow):
                 lo, hi = (lim.lower, lim.upper) if lim else (-3.14, 3.14)
                 joints[j.getName()] = (lo, hi, 0.0)
         self.joints.set_joints(joints)
+
+    def _detect_tcp_link(self) -> str | None:
+        """detect TCP link from SRDF or kinematic chain"""
+        try:
+            # try SRDF kinematic groups first
+            kin_info = self._env.getKinematicsInformation()
+            if kin_info and kin_info.chain_groups:
+                group_names = list(kin_info.chain_groups.keys())
+                if group_names:
+                    kin_group = self._env.getKinematicGroup(group_names[0])
+                    if kin_group:
+                        tip_names = kin_group.getAllPossibleTipLinkNames()
+                        if tip_names:
+                            return tip_names[0]
+        except Exception as e:
+            logger.debug(f"failed to get TCP from SRDF: {e}")
+
+        # fallback: use last link in scene graph
+        try:
+            sg = self._env.getSceneGraph()
+            links = [link.getName() for link in sg.getLinks()]
+            if links:
+                return links[-1]
+        except Exception as e:
+            logger.debug(f"failed to get last link: {e}")
+
+        return None
 
     def _open_urdf(self):
         path, _ = QFileDialog.getOpenFileName(self, "Open URDF", "", "URDF (*.urdf);;All (*)")
@@ -286,6 +330,50 @@ class TesseractViewer(QMainWindow):
                 self.joints.set_values(values)
                 self.statusBar().showMessage(f"Loaded pose: {name}")
 
+
+    def _load_trajectory(self):
+        """Load trajectory from JSON file."""
+        if not self._env:
+            QMessageBox.information(self, "Info", "Load URDF first")
+            return
+
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load Trajectory", "", "JSON (*.json);;All (*)"
+        )
+        if path:
+            try:
+                path = Path(path)
+                import json
+                with path.open("r") as f:
+                    data = json.load(f)
+
+                # Convert JSON to trajectory format
+                # Expected: list of waypoints with 'joints' dict and optional 'time'
+                trajectory = []
+                for wp_data in data:
+                    class Waypoint:
+                        def __init__(self, joints, time=0.0):
+                            self.joints = joints
+                            self.time = time
+
+                    joints = wp_data.get("joints", {})
+                    time = wp_data.get("time", 0.0)
+                    trajectory.append(Waypoint(joints, time))
+
+                self.traj_player.load_trajectory(trajectory)
+                self.statusBar().showMessage(f"Loaded trajectory: {path}")
+                logger.info(f"Loaded {len(trajectory)} waypoints from {path}")
+
+            except Exception as e:
+                logger.exception(f"Failed to load trajectory: {e}")
+                QMessageBox.critical(self, "Error", f"Failed to load trajectory: {e}")
+
+    def _on_trajectory_frame_changed(self, frame_idx: int):
+        """Update joint values when trajectory frame changes."""
+        waypoint = self.traj_player.get_waypoint()
+        if waypoint and hasattr(waypoint, 'joints'):
+            # Update joint sliders with waypoint values
+            self.joints.set_values(waypoint.joints)
 
     def _export_screenshot(self):
         """Export screenshot as PNG."""
