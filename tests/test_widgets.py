@@ -115,3 +115,115 @@ def test_window_size_reasonable():
     width, height = int(match.group(1)), int(match.group(2))
     assert width <= 1600, f"Default width too large: {width}"
     assert height <= 1000, f"Default height too large: {height}"
+
+
+class TestCartesianEditor:
+    """Tests for CartesianEditorWidget."""
+
+    def test_create_widget(self, qapp):
+        """Test widget creates without error."""
+        from widgets.cartesian_editor import CartesianEditorWidget
+
+        widget = CartesianEditorWidget()
+        assert widget is not None
+        assert hasattr(widget, 'x_spin')
+        assert hasattr(widget, 'x_slider')
+        assert hasattr(widget, 'roll_spin')
+
+    def test_default_values(self, qapp):
+        """Test default pose values."""
+        from widgets.cartesian_editor import CartesianEditorWidget
+
+        widget = CartesianEditorWidget()
+        x, y, z, r, p, yaw = widget.get_pose()
+
+        assert x == 0.0
+        assert y == 0.0
+        assert z == 0.5  # Default Z
+        assert r == 0.0
+        assert p == 0.0
+        assert yaw == 0.0
+
+    def test_set_pose(self, qapp):
+        """Test setting pose values."""
+        from widgets.cartesian_editor import CartesianEditorWidget
+        from math import radians
+
+        widget = CartesianEditorWidget()
+        widget.set_pose(1.0, 0.5, 0.8, radians(45), radians(30), radians(-90))
+
+        x, y, z, r, p, yaw = widget.get_pose()
+        assert abs(x - 1.0) < 0.01
+        assert abs(y - 0.5) < 0.01
+        assert abs(z - 0.8) < 0.01
+        assert abs(r - radians(45)) < 0.01
+        assert abs(p - radians(30)) < 0.01
+        assert abs(yaw - radians(-90)) < 0.01
+
+    def test_slider_spinbox_sync(self, qapp):
+        """Test slider and spinbox stay synchronized."""
+        from widgets.cartesian_editor import CartesianEditorWidget
+
+        widget = CartesianEditorWidget()
+
+        # Set via spinbox
+        widget.x_spin.setValue(0.5)
+        assert widget.x_slider.value() == 500  # Scaled by 1000
+
+        # Set via slider
+        widget.y_slider.setValue(250)
+        assert abs(widget.y_spin.value() - 0.25) < 0.001
+
+    def test_pose_changed_signal(self, qapp):
+        """Test poseChanged signal emits on value change."""
+        from widgets.cartesian_editor import CartesianEditorWidget
+
+        widget = CartesianEditorWidget()
+        received = []
+
+        widget.poseChanged.connect(lambda *args: received.append(args))
+
+        # Trigger change
+        widget.x_spin.setValue(0.3)
+
+        assert len(received) > 0
+        assert abs(received[-1][0] - 0.3) < 0.01  # X value
+
+    def test_apply_ik_signal(self, qapp):
+        """Test applyIKRequested signal emits on button click."""
+        from widgets.cartesian_editor import CartesianEditorWidget
+
+        widget = CartesianEditorWidget()
+        clicked = []
+
+        widget.applyIKRequested.connect(lambda: clicked.append(True))
+        widget.apply_btn.click()
+
+        assert len(clicked) == 1
+
+    def test_get_xyz(self, qapp):
+        """Test get_xyz returns position only."""
+        from widgets.cartesian_editor import CartesianEditorWidget
+
+        widget = CartesianEditorWidget()
+        widget.set_pose(1.0, 2.0, 3.0, 0.1, 0.2, 0.3)
+
+        xyz = widget.get_xyz()
+        assert len(xyz) == 3
+        assert abs(xyz[0] - 1.0) < 0.01
+        assert abs(xyz[1] - 2.0) < 0.01
+        assert abs(xyz[2] - 2.0) < 0.01  # Clamped to range max 2.0
+
+    def test_get_rpy_radians(self, qapp):
+        """Test get_rpy_radians returns orientation in radians."""
+        from widgets.cartesian_editor import CartesianEditorWidget
+        from math import radians, pi
+
+        widget = CartesianEditorWidget()
+        widget.set_pose(0, 0, 0, radians(90), radians(45), radians(-45))
+
+        rpy = widget.get_rpy_radians()
+        assert len(rpy) == 3
+        assert abs(rpy[0] - radians(90)) < 0.01
+        assert abs(rpy[1] - radians(45)) < 0.01
+        assert abs(rpy[2] - radians(-45)) < 0.01

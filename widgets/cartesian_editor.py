@@ -1,8 +1,9 @@
-"""Cartesian position/orientation editor widget."""
+"""Cartesian position/orientation editor widget with sliders."""
 from __future__ import annotations
 
-from math import pi
+from math import pi, degrees, radians
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -11,123 +12,188 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QLabel,
     QDoubleSpinBox,
+    QSlider,
+    QPushButton,
+    QSizePolicy,
 )
+from PySide6.QtCore import Qt
 
 
 class CartesianEditorWidget(QWidget):
-    """Widget for editing cartesian position and orientation."""
+    """Widget for editing cartesian position and orientation with sliders."""
+
+    # Emitted when any value changes: (x, y, z, roll, pitch, yaw)
+    poseChanged = Signal(float, float, float, float, float, float)
+    # Emitted when user wants to apply IK
+    applyIKRequested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._updating = False  # Prevent signal loops
         self._setup_ui()
+        self._connect_signals()
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(3, 3, 3, 3)
+        layout.setSpacing(6)
 
         # Position GroupBox
-        position_group = QGroupBox("Position")
-        position_group.setCheckable(True)
-        position_group.setChecked(True)
+        position_group = QGroupBox("Position (m)")
         position_layout = QGridLayout(position_group)
+        position_layout.setContentsMargins(6, 6, 6, 6)
 
         # X
-        position_layout.addWidget(QLabel("X:"), 0, 0)
-        self.x_spin = QDoubleSpinBox()
-        self.x_spin.setRange(-100.0, 100.0)
-        self.x_spin.setDecimals(6)
-        self.x_spin.setSingleStep(0.001)
-        position_layout.addWidget(self.x_spin, 0, 1)
+        self.x_slider, self.x_spin = self._create_axis_control(
+            position_layout, 0, "X", -2.0, 2.0, 0.0
+        )
 
         # Y
-        position_layout.addWidget(QLabel("Y:"), 0, 2)
-        self.y_spin = QDoubleSpinBox()
-        self.y_spin.setRange(-100.0, 100.0)
-        self.y_spin.setDecimals(6)
-        self.y_spin.setSingleStep(0.001)
-        position_layout.addWidget(self.y_spin, 0, 3)
+        self.y_slider, self.y_spin = self._create_axis_control(
+            position_layout, 1, "Y", -2.0, 2.0, 0.0
+        )
 
         # Z
-        position_layout.addWidget(QLabel("Z:"), 0, 4)
-        self.z_spin = QDoubleSpinBox()
-        self.z_spin.setRange(-100.0, 100.0)
-        self.z_spin.setDecimals(6)
-        self.z_spin.setSingleStep(0.001)
-        position_layout.addWidget(self.z_spin, 0, 5)
+        self.z_slider, self.z_spin = self._create_axis_control(
+            position_layout, 2, "Z", -2.0, 2.0, 0.5
+        )
 
         layout.addWidget(position_group)
 
-        # Orientation GroupBox
-        orientation_group = QGroupBox("Orientation")
-        orientation_group.setCheckable(True)
-        orientation_group.setChecked(True)
-        orientation_layout = QVBoxLayout(orientation_group)
-
-        # RPY section
-        rpy_layout = QHBoxLayout()
+        # Orientation GroupBox (RPY in degrees)
+        orientation_group = QGroupBox("Orientation (deg)")
+        orientation_layout = QGridLayout(orientation_group)
+        orientation_layout.setContentsMargins(6, 6, 6, 6)
 
         # Roll
-        rpy_layout.addWidget(QLabel("Roll:"))
-        self.roll_spin = QDoubleSpinBox()
-        self.roll_spin.setRange(-pi, pi)
-        self.roll_spin.setDecimals(6)
-        self.roll_spin.setSingleStep(0.001)
-        rpy_layout.addWidget(self.roll_spin)
+        self.roll_slider, self.roll_spin = self._create_axis_control(
+            orientation_layout, 0, "R", -180.0, 180.0, 0.0
+        )
 
         # Pitch
-        rpy_layout.addWidget(QLabel("Pitch:"))
-        self.pitch_spin = QDoubleSpinBox()
-        self.pitch_spin.setRange(-pi / 2, pi / 2)
-        self.pitch_spin.setDecimals(6)
-        self.pitch_spin.setSingleStep(0.001)
-        rpy_layout.addWidget(self.pitch_spin)
+        self.pitch_slider, self.pitch_spin = self._create_axis_control(
+            orientation_layout, 1, "P", -90.0, 90.0, 0.0
+        )
 
         # Yaw
-        rpy_layout.addWidget(QLabel("Yaw:"))
-        self.yaw_spin = QDoubleSpinBox()
-        self.yaw_spin.setRange(-pi, pi)
-        self.yaw_spin.setDecimals(6)
-        self.yaw_spin.setSingleStep(0.001)
-        rpy_layout.addWidget(self.yaw_spin)
-
-        orientation_layout.addLayout(rpy_layout)
-
-        # Quaternion section
-        quat_layout = QHBoxLayout()
-
-        # Quat X
-        quat_layout.addWidget(QLabel("X:"))
-        self.quat_x_spin = QDoubleSpinBox()
-        self.quat_x_spin.setRange(-1.0, 1.0)
-        self.quat_x_spin.setDecimals(6)
-        self.quat_x_spin.setSingleStep(0.001)
-        quat_layout.addWidget(self.quat_x_spin)
-
-        # Quat Y
-        quat_layout.addWidget(QLabel("Y:"))
-        self.quat_y_spin = QDoubleSpinBox()
-        self.quat_y_spin.setRange(-1.0, 1.0)
-        self.quat_y_spin.setDecimals(6)
-        self.quat_y_spin.setSingleStep(0.001)
-        quat_layout.addWidget(self.quat_y_spin)
-
-        # Quat Z
-        quat_layout.addWidget(QLabel("Z:"))
-        self.quat_z_spin = QDoubleSpinBox()
-        self.quat_z_spin.setRange(-1.0, 1.0)
-        self.quat_z_spin.setDecimals(6)
-        self.quat_z_spin.setSingleStep(0.001)
-        quat_layout.addWidget(self.quat_z_spin)
-
-        # Quat W
-        quat_layout.addWidget(QLabel("W:"))
-        self.quat_w_spin = QDoubleSpinBox()
-        self.quat_w_spin.setRange(-1.0, 1.0)
-        self.quat_w_spin.setDecimals(6)
-        self.quat_w_spin.setSingleStep(0.001)
-        self.quat_w_spin.setValue(1.0)
-        quat_layout.addWidget(self.quat_w_spin)
-
-        orientation_layout.addLayout(quat_layout)
+        self.yaw_slider, self.yaw_spin = self._create_axis_control(
+            orientation_layout, 2, "Y", -180.0, 180.0, 0.0
+        )
 
         layout.addWidget(orientation_group)
+
+        # Apply IK button
+        btn_layout = QHBoxLayout()
+        self.apply_btn = QPushButton("Apply IK")
+        self.apply_btn.clicked.connect(self.applyIKRequested.emit)
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.apply_btn)
+        layout.addLayout(btn_layout)
+
+        layout.addStretch()
+
+    def _create_axis_control(
+        self, layout: QGridLayout, row: int, label: str,
+        min_val: float, max_val: float, default: float
+    ) -> tuple[QSlider, QDoubleSpinBox]:
+        """Create a slider + spinbox pair for an axis."""
+        # Label
+        lbl = QLabel(f"{label}:")
+        lbl.setFixedWidth(20)
+        layout.addWidget(lbl, row, 0)
+
+        # Slider (integer, scaled by 1000 for precision)
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setRange(int(min_val * 1000), int(max_val * 1000))
+        slider.setValue(int(default * 1000))
+        slider.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        layout.addWidget(slider, row, 1)
+
+        # Spinbox
+        spin = QDoubleSpinBox()
+        spin.setRange(min_val, max_val)
+        spin.setDecimals(3)
+        spin.setSingleStep(0.01 if abs(max_val) <= 10 else 1.0)
+        spin.setValue(default)
+        spin.setFixedWidth(80)
+        layout.addWidget(spin, row, 2)
+
+        # Connect slider <-> spinbox
+        slider.valueChanged.connect(lambda v: self._on_slider_changed(spin, v))
+        spin.valueChanged.connect(lambda v: self._on_spin_changed(slider, v))
+
+        return slider, spin
+
+    def _on_slider_changed(self, spin: QDoubleSpinBox, value: int):
+        """Slider changed -> update spinbox."""
+        if self._updating:
+            return
+        self._updating = True
+        spin.setValue(value / 1000.0)
+        self._updating = False
+        self._emit_pose()
+
+    def _on_spin_changed(self, slider: QSlider, value: float):
+        """Spinbox changed -> update slider."""
+        if self._updating:
+            return
+        self._updating = True
+        slider.setValue(int(value * 1000))
+        self._updating = False
+        self._emit_pose()
+
+    def _connect_signals(self):
+        """Connect value change signals."""
+        pass  # Already connected in _create_axis_control
+
+    def _emit_pose(self):
+        """Emit current pose values."""
+        self.poseChanged.emit(
+            self.x_spin.value(),
+            self.y_spin.value(),
+            self.z_spin.value(),
+            radians(self.roll_spin.value()),
+            radians(self.pitch_spin.value()),
+            radians(self.yaw_spin.value()),
+        )
+
+    def set_pose(self, x: float, y: float, z: float, roll: float, pitch: float, yaw: float):
+        """Set pose values (angles in radians)."""
+        self._updating = True
+        self.x_spin.setValue(x)
+        self.y_spin.setValue(y)
+        self.z_spin.setValue(z)
+        self.roll_spin.setValue(degrees(roll))
+        self.pitch_spin.setValue(degrees(pitch))
+        self.yaw_spin.setValue(degrees(yaw))
+        # Update sliders
+        self.x_slider.setValue(int(x * 1000))
+        self.y_slider.setValue(int(y * 1000))
+        self.z_slider.setValue(int(z * 1000))
+        self.roll_slider.setValue(int(degrees(roll) * 1000))
+        self.pitch_slider.setValue(int(degrees(pitch) * 1000))
+        self.yaw_slider.setValue(int(degrees(yaw) * 1000))
+        self._updating = False
+
+    def get_pose(self) -> tuple[float, float, float, float, float, float]:
+        """Get current pose (x, y, z, roll, pitch, yaw) with angles in radians."""
+        return (
+            self.x_spin.value(),
+            self.y_spin.value(),
+            self.z_spin.value(),
+            radians(self.roll_spin.value()),
+            radians(self.pitch_spin.value()),
+            radians(self.yaw_spin.value()),
+        )
+
+    def get_xyz(self) -> tuple[float, float, float]:
+        """Get position only."""
+        return (self.x_spin.value(), self.y_spin.value(), self.z_spin.value())
+
+    def get_rpy_radians(self) -> tuple[float, float, float]:
+        """Get orientation as RPY in radians."""
+        return (
+            radians(self.roll_spin.value()),
+            radians(self.pitch_spin.value()),
+            radians(self.yaw_spin.value()),
+        )
