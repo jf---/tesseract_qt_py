@@ -82,6 +82,17 @@ class TesseractViewer(QMainWindow):
         self.info_dock.setWidget(self.info_panel)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.info_dock)
 
+        self.contact_dock = QDockWidget("Contact Checker", self)
+        self.contact_widget = ContactComputeWidget()
+        self.contact_dock.setWidget(self.contact_widget)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.contact_dock)
+
+        # Tabify right panel docks
+        self.tabifyDockWidget(self.joint_dock, self.ik_dock)
+        self.tabifyDockWidget(self.ik_dock, self.info_dock)
+        self.tabifyDockWidget(self.info_dock, self.contact_dock)
+        self.joint_dock.raise_()
+
         self.traj_dock = QDockWidget("Trajectory Player", self)
         self.traj_player = TrajectoryPlayerWidget()
         self.traj_dock.setWidget(self.traj_player)
@@ -96,11 +107,6 @@ class TesseractViewer(QMainWindow):
 
         # Set bottom dock area height
         self.resizeDocks([self.traj_dock], [180], Qt.Orientation.Vertical)
-
-        self.contact_dock = QDockWidget("Contact Checker", self)
-        self.contact_widget = ContactComputeWidget()
-        self.contact_dock.setWidget(self.contact_widget)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.contact_dock)
 
         self.setStatusBar(QStatusBar())
 
