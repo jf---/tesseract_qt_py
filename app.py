@@ -29,7 +29,11 @@ from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from tesseract_robotics.tesseract_environment import Environment
 from tesseract_robotics.tesseract_common import GeneralResourceLocator, FilesystemPath, CollisionMarginData
 from tesseract_robotics.tesseract_scene_graph import JointType
-from tesseract_robotics.tesseract_collision import ContactRequest, ContactResultMap, ContactResultVector, ContactTestType
+from tesseract_robotics.tesseract_collision import (
+    ContactRequest, ContactResultMap, ContactResultVector, ContactTestType,
+    ContactManagersPluginFactory,
+)
+from tesseract_robotics.tesseract_common import _FilesystemPath
 
 from widgets.render_widget import RenderWidget
 from widgets.joint_slider import JointSliderWidget
@@ -40,6 +44,10 @@ from widgets.trajectory_player import TrajectoryPlayerWidget
 from widgets.contact_compute_widget import ContactComputeWidget
 from widgets.plot_widget import PlotWidget
 from widgets.acm_editor import ACMEditorWidget
+from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
+from widgets.manipulation_widget import ManipulationWidget
+from widgets.group_states_editor import GroupStatesEditorWidget
+from widgets.tcp_editor import TCPEditorWidget
 from core.state_manager import StateManager
 
 
@@ -93,11 +101,35 @@ class TesseractViewer(QMainWindow):
         self.acm_dock.setWidget(self.acm_widget)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.acm_dock)
 
+        self.kin_groups_dock = QDockWidget("Kinematic Groups", self)
+        self.kin_groups_widget = KinematicGroupsEditorWidget()
+        self.kin_groups_dock.setWidget(self.kin_groups_widget)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.kin_groups_dock)
+
+        self.manip_dock = QDockWidget("Manipulation", self)
+        self.manip_widget = ManipulationWidget()
+        self.manip_dock.setWidget(self.manip_widget)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.manip_dock)
+
+        self.group_states_dock = QDockWidget("Group States", self)
+        self.group_states_widget = GroupStatesEditorWidget()
+        self.group_states_dock.setWidget(self.group_states_widget)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.group_states_dock)
+
+        self.tcp_dock = QDockWidget("TCP Editor", self)
+        self.tcp_widget = TCPEditorWidget()
+        self.tcp_dock.setWidget(self.tcp_widget)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.tcp_dock)
+
         # Tabify right panel docks
         self.tabifyDockWidget(self.joint_dock, self.ik_dock)
         self.tabifyDockWidget(self.ik_dock, self.info_dock)
         self.tabifyDockWidget(self.info_dock, self.contact_dock)
         self.tabifyDockWidget(self.contact_dock, self.acm_dock)
+        self.tabifyDockWidget(self.acm_dock, self.kin_groups_dock)
+        self.tabifyDockWidget(self.kin_groups_dock, self.manip_dock)
+        self.tabifyDockWidget(self.manip_dock, self.group_states_dock)
+        self.tabifyDockWidget(self.group_states_dock, self.tcp_dock)
         self.joint_dock.raise_()
 
         self.traj_dock = QDockWidget("Trajectory Player", self)
@@ -162,6 +194,10 @@ class TesseractViewer(QMainWindow):
         view_menu.addAction(self.plot_dock.toggleViewAction())
         view_menu.addAction(self.contact_dock.toggleViewAction())
         view_menu.addAction(self.acm_dock.toggleViewAction())
+        view_menu.addAction(self.kin_groups_dock.toggleViewAction())
+        view_menu.addAction(self.manip_dock.toggleViewAction())
+        view_menu.addAction(self.group_states_dock.toggleViewAction())
+        view_menu.addAction(self.tcp_dock.toggleViewAction())
         view_menu.addSeparator()
         view_menu.addAction("Show Workspace...", self._show_workspace)
         view_menu.addAction("Clear Workspace", self._clear_workspace)
@@ -535,8 +571,26 @@ class TesseractViewer(QMainWindow):
             return
 
         try:
-            # Get discrete contact manager
-            manager = self._env.getDiscreteContactManager()
+            # Create collision manager from factory with plugin config
+            plugin_config = _FilesystemPath(
+                "/Users/jelle/Code/CADCAM/tesseract_python_nanobind/ws/install/share/tesseract_support/urdf/contact_manager_plugins.yaml"
+            )
+            locator = GeneralResourceLocator()
+            factory = ContactManagersPluginFactory(plugin_config, locator)
+            manager = factory.createDiscreteContactManager("BulletDiscreteBVHManager")
+
+            # Add collision objects from environment
+            state = self._env.getState()
+            for link_name in self._env.getActiveLinkNames():
+                link = self._env.getLink(link_name)
+                if link and link.collision and link_name in state.link_transforms:
+                    # Extract geometries and their local transforms from Collision objects
+                    shapes = [coll.geometry for coll in link.collision]
+                    # Combine link transform with collision origin
+                    link_tf = state.link_transforms[link_name]
+                    shape_poses = [link_tf * coll.origin for coll in link.collision]
+                    manager.addCollisionObject(link_name, 0, shapes, shape_poses)
+
             manager.setActiveCollisionObjects(self._env.getActiveLinkNames())
 
             # Set margin from widget
