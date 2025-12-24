@@ -151,6 +151,7 @@ class TesseractViewer(QMainWindow):
         self.ik_widget.targetPoseSet.connect(lambda pose: (self.render.scene.show_ik_target(pose), self.render.render()))
         self.traj_player.frameChanged.connect(self._on_trajectory_frame_changed)
         self.contact_widget.btn_compute.clicked.connect(self._compute_contacts)
+        self.contact_widget.btn_clear.clicked.connect(lambda: (self.render.scene.clear_contacts(), self.render.render()))
 
         # Keyboard shortcuts
         self._setup_shortcuts()

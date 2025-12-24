@@ -66,6 +66,9 @@ class ContactComputeWidget(QWidget):
 
         button_layout.addStretch()
 
+        self.btn_clear = QPushButton("Clear")
+        button_layout.addWidget(self.btn_clear)
+
         self.btn_compute = QPushButton("Compute")
         button_layout.addWidget(self.btn_compute)
 
