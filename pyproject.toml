@@ -1,0 +1,50 @@
+[project]
+name = "tesseract-qt-py"
+version = "0.1.0"
+description = "Python Qt6/VTK viewer for Tesseract robotics"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "LGPL-3.0"}
+authors = [
+    {name = "Jelle Feringa", email = "jelleferinga@gmail.com"}
+]
+keywords = ["robotics", "visualization", "tesseract", "qt", "vtk"]
+
+dependencies = [
+    "pyside6>=6.5",
+    "vtk>=9.0",
+    "numpy>=1.21",
+    "pyqtgraph>=0.13",
+    "tesseract-robotics-nanobind>=0.7.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff",
+]
+
+[project.scripts]
+tesseract-viewer = "tesseract_qt_py.app:main"
+
+[project.gui-scripts]
+tesseract-viewer-gui = "tesseract_qt_py.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["core", "widgets", "qml"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
