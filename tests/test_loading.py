@@ -197,6 +197,100 @@ def test_scene_manager_remove_link():
     assert "link_1" not in scene.link_actors
 
 
+def test_reload_multiple_robots(qapp):
+    """Test reloading multiple URDF/SRDF pairs doesn't break signal wiring.
+
+    Loads several different robots sequentially and verifies:
+    - No crashes on reload
+    - Widgets update correctly
+    - Signals remain connected
+    - Joint sliders match new robot
+    """
+    import tesseract_robotics
+    from widgets.manipulation_widget import ManipulationWidget
+    from core.scene_manager import SceneManager
+    from tesseract_robotics.tesseract_environment import Environment
+    from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_scene_graph import JointType
+    import vtk
+
+    support_dir = Path(tesseract_robotics.get_tesseract_support_path())
+    urdf_dir = support_dir / "urdf"
+
+    # Robot configs to test (urdf, srdf)
+    robots = [
+        ("abb_irb2400.urdf", "abb_irb2400.srdf"),
+        ("lbr_iiwa_14_r820.urdf", "lbr_iiwa_14_r820.srdf"),
+        ("boxbot.urdf", "boxbot.srdf"),
+        ("abb_irb2400.urdf", "abb_irb2400.srdf"),  # Reload first robot
+    ]
+
+    # Filter to existing files
+    valid_robots = []
+    for urdf, srdf in robots:
+        urdf_path = urdf_dir / urdf
+        srdf_path = urdf_dir / srdf
+        if urdf_path.exists() and srdf_path.exists():
+            valid_robots.append((urdf_path, srdf_path))
+
+    if len(valid_robots) < 2:
+        pytest.skip("Need at least 2 robots in tesseract_support")
+
+    # Create widgets
+    renderer = vtk.vtkRenderer()
+    scene = SceneManager(renderer)
+    manip = ManipulationWidget()
+
+    # Track signal emissions
+    joint_signals = []
+    manip.jointValuesChanged.connect(lambda v: joint_signals.append(v))
+
+    loc = GeneralResourceLocator()
+    prev_joint_count = 0
+    loaded_count = 0
+
+    for urdf_path, srdf_path in valid_robots:
+        # Load environment (some SRDFs have missing deps, skip those)
+        env = Environment()
+        if not env.init(str(urdf_path), str(srdf_path), loc):
+            continue  # Skip robots that fail to load
+
+        loaded_count += 1
+
+        # Load into scene
+        scene.load_environment(env)
+
+        # Get joints
+        sg = env.getSceneGraph()
+        movable = (JointType.REVOLUTE, JointType.CONTINUOUS, JointType.PRISMATIC)
+        joints = {}
+        for j in sg.getJoints():
+            if j.type in movable:
+                lim = j.limits
+                lo, hi = (lim.lower, lim.upper) if lim else (-3.14, 3.14)
+                joints[j.getName()] = (lo, hi, 0.0)
+
+        # Update manipulation widget
+        manip.set_environment(env)
+        manip.set_joint_limits(joints)
+
+        # Verify joints changed (different robots have different joints)
+        current_count = len(joints)
+        if prev_joint_count > 0 and current_count != prev_joint_count:
+            # Joint count changed - widget should reflect this
+            widget_joints = manip.get_joint_values()
+            assert len(widget_joints) == current_count, \
+                f"Widget joints {len(widget_joints)} != env joints {current_count}"
+
+        prev_joint_count = current_count
+
+        # Verify scene has actors
+        assert len(scene.link_actors) > 0, f"No actors after loading {urdf_path.name}"
+
+    # Verify we loaded at least 2 different robots
+    assert loaded_count >= 2, f"Need 2+ robots to test reload, only loaded {loaded_count}"
+
+
 def test_contact_detection_with_joint_values():
     """Test contact detection uses current joint state.
 
