@@ -216,7 +216,12 @@ class RenderWidget(QWidget):
     def load_environment(self, env):
         """Load tesseract environment."""
         self.scene.load_environment(env)
-        self.camera_ctrl.reset_view()
+        # Focus camera on robot bounds only (not grid)
+        bounds = self.scene.get_robot_bounds()
+        if bounds:
+            self.camera_ctrl.fit_to_bounds(bounds)
+        else:
+            self.camera_ctrl.reset_view()
 
     def update_joint_values(self, joint_values: dict[str, float]):
         """Update from joint values."""
@@ -312,6 +317,12 @@ class RenderWidget(QWidget):
     def render(self):
         """Force render."""
         self.vtk_widget.GetRenderWindow().Render()
+
+    def resizeEvent(self, event):
+        """Handle resize to trigger VTK redraw."""
+        super().resizeEvent(event)
+        if hasattr(self, "vtk_widget"):
+            self.vtk_widget.GetRenderWindow().Render()
 
     def save_screenshot(self, filepath: str):
         """Save current view as PNG.

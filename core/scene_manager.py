@@ -87,6 +87,28 @@ class SceneManager:
         # Get initial state and apply transforms
         self.update_from_state(env.getState())
 
+    def get_robot_bounds(self) -> tuple[float, float, float, float, float, float] | None:
+        """Get combined bounds of all robot link actors (excludes grid/axes)."""
+        if not self.link_actors:
+            return None
+
+        xmin = ymin = zmin = float('inf')
+        xmax = ymax = zmax = float('-inf')
+
+        for actors in self.link_actors.values():
+            for actor in actors:
+                bounds = actor.GetBounds()
+                xmin = min(xmin, bounds[0])
+                xmax = max(xmax, bounds[1])
+                ymin = min(ymin, bounds[2])
+                ymax = max(ymax, bounds[3])
+                zmin = min(zmin, bounds[4])
+                zmax = max(zmax, bounds[5])
+
+        if xmin == float('inf'):
+            return None
+        return (xmin, xmax, ymin, ymax, zmin, zmax)
+
     def update_from_state(self, state):
         """Update transforms from environment state."""
         for link_name, actors in self.link_actors.items():
@@ -390,6 +412,17 @@ class SceneManager:
                     actor.GetProperty().SetColor(0.7, 0.7, 0.7)
                     actor.GetProperty().SetAmbient(0.0)
 
+    def highlight_collisions(self, colliding_links: set[str]):
+        """Highlight colliding links in red, reset others to default."""
+        for link_name, actors in self.link_actors.items():
+            for actor in actors:
+                if link_name in colliding_links:
+                    actor.GetProperty().SetColor(1.0, 0.0, 0.0)  # Red
+                    actor.GetProperty().SetAmbient(0.5)
+                else:
+                    actor.GetProperty().SetColor(0.7, 0.7, 0.7)  # Default gray
+                    actor.GetProperty().SetAmbient(0.0)
+
     def add_tool_path(
         self,
         path_id: str,
@@ -600,9 +633,7 @@ class SceneManager:
 
         try:
             # Update env state with joint values
-            for name, value in joint_values.items():
-                self._env.setState([name], [value])
-
+            self._env.setState(joint_values)
             state = self._env.getState()
             return state.link_transforms.get(tcp_link)
         except Exception as e:
@@ -662,9 +693,7 @@ class SceneManager:
 
         try:
             # Update state
-            for name, value in joint_values.items():
-                self._env.setState([name], [value])
-
+            self._env.setState(joint_values)
             state = self._env.getState()
             sg_obj = self._env.getSceneGraph()
 
@@ -757,11 +786,10 @@ class SceneManager:
                 values[name] = np.random.uniform(lo, hi)
 
             # Set state
-            for name, val in values.items():
-                try:
-                    self._env.setState([name], [val])
-                except Exception:
-                    pass
+            try:
+                self._env.setState(values)
+            except Exception:
+                pass
 
             # Get TCP position
             try:

@@ -133,6 +133,23 @@ class CameraController:
         self.renderer.ResetCamera()
         self._render()
 
+    def fit_to_bounds(self, bounds: tuple[float, float, float, float, float, float]):
+        """Fit camera to specific bounds (xmin,xmax,ymin,ymax,zmin,zmax)."""
+        xmin, xmax, ymin, ymax, zmin, zmax = bounds
+        cx, cy, cz = (xmin + xmax) / 2, (ymin + ymax) / 2, (zmin + zmax) / 2
+
+        # Compute diagonal distance
+        import math
+        diag = math.sqrt((xmax - xmin) ** 2 + (ymax - ymin) ** 2 + (zmax - zmin) ** 2)
+        dist = diag * 1.5  # Add some margin
+
+        # Set isometric view focused on bounds center
+        self.camera.SetFocalPoint(cx, cy, cz)
+        self.camera.SetPosition(cx + dist * 0.5, cy - dist * 0.7, cz + dist * 0.5)
+        self.camera.SetViewUp(0, 0, 1)
+        self.renderer.ResetCameraClippingRange()
+        self._render()
+
     def set_view_front(self):
         """Set front view (looking at -Y)."""
         fp = self.camera.GetFocalPoint()
