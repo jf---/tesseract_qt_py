@@ -188,6 +188,8 @@ class JointSliderWidget(QWidget):
         # Add groups
         for group_name, joints in groups.items():
             group = QGroupBox(group_name)
+            group.setCheckable(True)
+            group.setChecked(True)
             group_layout = QVBoxLayout(group)
             group_layout.setContentsMargins(4, 4, 4, 4)
             group_layout.setSpacing(2)

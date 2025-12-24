@@ -49,6 +49,8 @@ class RobotInfoPanel(QWidget):
 
         # Robot info group
         info_group = QGroupBox("Robot Info")
+        info_group.setCheckable(True)
+        info_group.setChecked(True)
         info_layout = QVBoxLayout(info_group)
 
         self.name_label = QLabel("Name: -")
@@ -59,6 +61,8 @@ class RobotInfoPanel(QWidget):
 
         # Joint values table
         joint_group = QGroupBox("Joint Values")
+        joint_group.setCheckable(True)
+        joint_group.setChecked(True)
         joint_layout = QVBoxLayout(joint_group)
 
         self.joint_table = QTableWidget()
@@ -76,6 +80,8 @@ class RobotInfoPanel(QWidget):
 
         # TCP pose group
         tcp_group = QGroupBox("TCP Pose")
+        tcp_group.setCheckable(True)
+        tcp_group.setChecked(True)
         tcp_layout = QVBoxLayout(tcp_group)
 
         self.tcp_xyz_label = QLabel("XYZ: -")

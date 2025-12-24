@@ -29,6 +29,8 @@ class ContactComputeWidget(QWidget):
 
         # Contact Request group
         group = QGroupBox("Contact Request")
+        group.setCheckable(True)
+        group.setChecked(True)
         form = QFormLayout(group)
 
         # Contact Threshold

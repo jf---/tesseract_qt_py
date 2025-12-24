@@ -27,6 +27,8 @@ class CartesianEditorWidget(QWidget):
 
         # Position GroupBox
         position_group = QGroupBox("Position")
+        position_group.setCheckable(True)
+        position_group.setChecked(True)
         position_layout = QGridLayout(position_group)
 
         # X
@@ -57,6 +59,8 @@ class CartesianEditorWidget(QWidget):
 
         # Orientation GroupBox
         orientation_group = QGroupBox("Orientation")
+        orientation_group.setCheckable(True)
+        orientation_group.setChecked(True)
         orientation_layout = QVBoxLayout(orientation_group)
 
         # RPY section

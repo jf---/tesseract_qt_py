@@ -39,6 +39,8 @@ class IKWidget(QWidget):
 
         # Target pose inputs
         pose_group = QGroupBox("Target Pose")
+        pose_group.setCheckable(True)
+        pose_group.setChecked(True)
         pose_layout = QFormLayout(pose_group)
 
         self.x_spin = self._create_spinbox(-10, 10, 0.001)
