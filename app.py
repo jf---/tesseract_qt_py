@@ -657,7 +657,10 @@ class TesseractViewer(QMainWindow):
             results = ContactResultVector()
             result_map.flattenMoveResults(results)
 
-            logger.info(f"Found {len(results)} contacts")
+            if len(results) == 0:
+                logger.success(f"No collisions detected")
+            else:
+                logger.warning(f"Found {len(results)} collision(s)")
             for i, contact in enumerate(results):
                 logger.debug(f"Contact {i}: {contact.link_names[0]} <-> {contact.link_names[1]}, dist={contact.distance:.4f}")
 

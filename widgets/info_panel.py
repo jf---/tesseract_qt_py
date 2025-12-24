@@ -129,18 +129,18 @@ class RobotInfoPanel(QWidget):
             item = QTableWidgetItem(name)
             self.joint_table.setItem(i, 0, item)
 
-            # Value
-            item = QTableWidgetItem("0.0000")
+            # Value (in degrees)
+            item = QTableWidgetItem("0.0°")
             item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.joint_table.setItem(i, 1, item)
 
-            # Limits
+            # Limits (convert to degrees)
             lo, hi = self._joint_limits[name]
-            item = QTableWidgetItem(f"{lo:.3f}")
+            item = QTableWidgetItem(f"{np.rad2deg(lo):.1f}°")
             item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.joint_table.setItem(i, 2, item)
 
-            item = QTableWidgetItem(f"{hi:.3f}")
+            item = QTableWidgetItem(f"{np.rad2deg(hi):.1f}°")
             item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.joint_table.setItem(i, 3, item)
 
@@ -153,13 +153,13 @@ class RobotInfoPanel(QWidget):
         self.update_state()
 
     def update_joint_values(self, joint_values: dict[str, float]):
-        """Update joint value display."""
+        """Update joint value display (input in radians, displayed in degrees)."""
         for i, name in enumerate(self._joint_names):
             if name in joint_values:
                 value = joint_values[name]
                 item = self.joint_table.item(i, 1)
                 if item:
-                    item.setText(f"{value:.4f}")
+                    item.setText(f"{np.rad2deg(value):.1f}°")
 
         # Update TCP - set state first to ensure transforms are current
         if self._env:

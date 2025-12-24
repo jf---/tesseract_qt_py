@@ -1,5 +1,6 @@
 """Joint state slider widget."""
 from __future__ import annotations
+import math
 
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtWidgets import (
@@ -19,14 +20,17 @@ from PySide6.QtWidgets import (
 class JointSlider(QFrame):
     """Single joint slider with label and spinbox."""
 
-    valueChanged = Signal(str, float)  # joint_name, value
+    RAD_TO_DEG = 180.0 / math.pi
+    DEG_TO_RAD = math.pi / 180.0
+
+    valueChanged = Signal(str, float)  # joint_name, value (radians)
 
     def __init__(self, name: str, lower: float, upper: float, value: float = 0.0, parent=None):
         super().__init__(parent)
         self.name = name
-        self.lower = lower
-        self.upper = upper
-        self._value = value
+        self.lower = lower  # radians
+        self.upper = upper  # radians
+        self._value = value  # radians
         self._updating = False
 
         self._setup_ui()
@@ -40,7 +44,9 @@ class JointSlider(QFrame):
         # Joint name label
         self.label = QLabel(self.name)
         self.label.setFixedWidth(120)
-        self.label.setToolTip(f"{self.name}\nRange: [{self.lower:.3f}, {self.upper:.3f}]")
+        lo_deg = self.lower * self.RAD_TO_DEG
+        hi_deg = self.upper * self.RAD_TO_DEG
+        self.label.setToolTip(f"{self.name}\nRange: [{lo_deg:.1f}°, {hi_deg:.1f}°]")
         layout.addWidget(self.label)
 
         # Slider
@@ -49,11 +55,12 @@ class JointSlider(QFrame):
         self.slider.valueChanged.connect(self._on_slider_changed)
         layout.addWidget(self.slider, stretch=1)
 
-        # Spinbox
+        # Spinbox (displays degrees)
         self.spinbox = QDoubleSpinBox()
-        self.spinbox.setRange(self.lower, self.upper)
-        self.spinbox.setDecimals(4)
-        self.spinbox.setSingleStep(0.01)
+        self.spinbox.setRange(lo_deg, hi_deg)
+        self.spinbox.setDecimals(1)
+        self.spinbox.setSingleStep(1.0)
+        self.spinbox.setSuffix("°")
         self.spinbox.setFixedWidth(90)
         self.spinbox.valueChanged.connect(self._on_spinbox_changed)
         layout.addWidget(self.spinbox)
@@ -63,34 +70,38 @@ class JointSlider(QFrame):
             return
         self._updating = True
 
-        # Convert slider to actual value
+        # Convert slider to radians
         t = value / 1000.0
-        actual = self.lower + t * (self.upper - self.lower)
-        self._value = actual
-        self.spinbox.setValue(actual)
-        self.valueChanged.emit(self.name, actual)
+        rad_value = self.lower + t * (self.upper - self.lower)
+        self._value = rad_value
+        # Update spinbox in degrees
+        self.spinbox.setValue(rad_value * self.RAD_TO_DEG)
+        self.valueChanged.emit(self.name, rad_value)
 
         self._updating = False
 
-    def _on_spinbox_changed(self, value: float):
+    def _on_spinbox_changed(self, deg_value: float):
         if self._updating:
             return
         self._updating = True
 
-        self._value = value
-        # Convert actual value to slider position
+        # Convert degrees to radians
+        rad_value = deg_value * self.DEG_TO_RAD
+        self._value = rad_value
+        # Update slider position
         if self.upper > self.lower:
-            t = (value - self.lower) / (self.upper - self.lower)
+            t = (rad_value - self.lower) / (self.upper - self.lower)
             self.slider.setValue(int(t * 1000))
-        self.valueChanged.emit(self.name, value)
+        self.valueChanged.emit(self.name, rad_value)
 
         self._updating = False
 
     def set_value(self, value: float):
-        """Set joint value."""
+        """Set joint value (in radians)."""
         self._updating = True
         self._value = max(self.lower, min(self.upper, value))
-        self.spinbox.setValue(self._value)
+        # Display in degrees
+        self.spinbox.setValue(self._value * self.RAD_TO_DEG)
         if self.upper > self.lower:
             t = (self._value - self.lower) / (self.upper - self.lower)
             self.slider.setValue(int(t * 1000))
