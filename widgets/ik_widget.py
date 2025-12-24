@@ -208,8 +208,7 @@ class IKWidget(QWidget):
                 return
 
             # Get working frame (base link)
-            base_names = self._kin_group.getAllPossibleBaseLinkNames()
-            working_frame = base_names[0] if base_names else "base_link"
+            working_frame = self._kin_group.getBaseLinkName()
 
             # Create IK input
             ik_input = KinGroupIKInput(target, working_frame, tcp_name)
