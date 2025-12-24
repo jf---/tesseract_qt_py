@@ -46,7 +46,7 @@ class PlotWidget(QWidget):
         self.ax.set_xlabel('Time (s)')
         self.ax.set_ylabel('Joint Value (rad)')
         self.ax.grid(True, alpha=0.3)
-        self.figure.tight_layout()
+        self.figure.subplots_adjust(left=0.12, right=0.95, top=0.92, bottom=0.15)
 
         self.canvas = FigureCanvasQTAgg(self.figure)
         layout.addWidget(self.canvas)
