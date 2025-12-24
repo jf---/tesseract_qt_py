@@ -1,4 +1,9 @@
-"""Motion planning helpers for Tesseract."""
+"""Motion planning helpers for Tesseract.
+
+Note: The planning API requires PlanningTaskComposerProblemUPtr which may not be
+available in all versions of tesseract_robotics. The module will import successfully
+but planning methods will return None if the legacy API is not available.
+"""
 from __future__ import annotations
 
 import numpy as np
@@ -10,8 +15,6 @@ from tesseract_robotics.tesseract_common import (
     Translation3d,
     Quaterniond,
     FilesystemPath,
-    AnyPoly_wrap_CompositeInstruction,
-    AnyPoly_as_CompositeInstruction,
 )
 from tesseract_robotics.tesseract_command_language import (
     CartesianWaypoint,
@@ -27,11 +30,21 @@ from tesseract_robotics.tesseract_command_language import (
 )
 from tesseract_robotics.tesseract_task_composer import (
     TaskComposerPluginFactory,
-    PlanningTaskComposerProblemUPtr,
-    PlanningTaskComposerProblemUPtr_as_TaskComposerProblemUPtr,
     TaskComposerDataStorage,
-    TaskComposerInput,
+    AnyPoly_wrap_CompositeInstruction,
+    AnyPoly_as_CompositeInstruction,
 )
+
+# Handle API changes - these may not exist in newer versions
+try:
+    from tesseract_robotics.tesseract_task_composer import (
+        PlanningTaskComposerProblemUPtr,
+        PlanningTaskComposerProblemUPtr_as_TaskComposerProblemUPtr,
+        TaskComposerInput,
+    )
+    HAS_LEGACY_API = True
+except ImportError:
+    HAS_LEGACY_API = False
 
 
 class PlanningHelper:
@@ -134,6 +147,11 @@ class PlanningHelper:
         Returns:
             Planned trajectory or None on failure
         """
+        if not HAS_LEGACY_API:
+            print("Planning API not available - PlanningTaskComposerProblemUPtr not found")
+            print("The tesseract_robotics API may have changed in this version")
+            return None
+
         try:
             task = self.factory.createTaskComposerNode(pipeline_name)
             input_key = task.getInputKeys()[0]

@@ -127,6 +127,9 @@ class TesseractViewer(QMainWindow):
         view_menu.addAction(self.ik_dock.toggleViewAction())
         view_menu.addAction(self.info_dock.toggleViewAction())
         view_menu.addAction(self.traj_dock.toggleViewAction())
+        view_menu.addSeparator()
+        view_menu.addAction("Show Workspace...", self._show_workspace)
+        view_menu.addAction("Clear Workspace", self._clear_workspace)
 
         # Connections
         self.joints.jointValuesChanged.connect(self.render.update_joint_values)
@@ -137,6 +140,7 @@ class TesseractViewer(QMainWindow):
         self.tree.linkFrameToggled.connect(lambda n, v: (self.render.scene.show_frame(n, v), self.render.render()))
         self.render.linkClicked.connect(self.tree.select_link)
         self.ik_widget.solutionFound.connect(self.joints.set_values)
+        self.ik_widget.targetPoseSet.connect(lambda pose: (self.render.scene.show_ik_target(pose), self.render.render()))
         self.traj_player.frameChanged.connect(self._on_trajectory_frame_changed)
 
         # Keyboard shortcuts
@@ -403,6 +407,61 @@ class TesseractViewer(QMainWindow):
                 self.statusBar().showMessage(f"Saved: {path}")
             except Exception as e:
                 QMessageBox.critical(self, "Error", str(e))
+
+    def _show_workspace(self):
+        """Sample and display robot workspace as point cloud."""
+        if not self._env:
+            QMessageBox.information(self, "Info", "Load URDF first")
+            return
+
+        if not self.joints.sliders:
+            QMessageBox.information(self, "Info", "No movable joints")
+            return
+
+        # Get joint names and limits
+        joint_names = list(self.joints.sliders.keys())
+        joint_limits = {}
+        for name, slider in self.joints.sliders.items():
+            joint_limits[name] = (slider.minimum() / 1000.0, slider.maximum() / 1000.0)
+
+        # Get TCP link
+        tcp_link = self.info_panel.tcp_link if hasattr(self.info_panel, 'tcp_link') else None
+        if not tcp_link:
+            QMessageBox.information(self, "Info", "No TCP link detected")
+            return
+
+        try:
+            self.statusBar().showMessage("Sampling workspace (500 points)...")
+            points = self.render.scene.sample_workspace(
+                joint_names=joint_names,
+                joint_limits=joint_limits,
+                n_samples=500,
+                tcp_link=tcp_link
+            )
+
+            if len(points) > 0:
+                scalars = self.render.scene.compute_manipulability(points)
+                self.render.scene.show_workspace(points, scalars, point_size=3.0)
+                self.render.render()
+                self.statusBar().showMessage(f"Workspace displayed: {len(points)} points")
+            else:
+                QMessageBox.warning(self, "Warning", "No workspace points generated")
+                self.statusBar().clearMessage()
+
+        except Exception as e:
+            logger.exception(f"Workspace sampling failed: {e}")
+            QMessageBox.critical(self, "Error", str(e))
+            self.statusBar().clearMessage()
+
+    def _clear_workspace(self):
+        """Remove workspace visualization."""
+        try:
+            self.render.scene.hide_workspace()
+            self.render.render()
+            self.statusBar().showMessage("Workspace cleared")
+        except Exception as e:
+            logger.exception(f"Clear workspace failed: {e}")
+            QMessageBox.critical(self, "Error", str(e))
 
     def _setup_shortcuts(self):
         """Setup global keyboard shortcuts."""

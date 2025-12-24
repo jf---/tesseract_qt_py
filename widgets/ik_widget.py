@@ -23,6 +23,7 @@ class IKWidget(QWidget):
     """Inverse kinematics solver widget."""
 
     solutionFound = Signal(dict)  # joint_name -> value
+    targetPoseSet = Signal(object)  # target pose (Isometry3d)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -142,6 +143,9 @@ class IKWidget(QWidget):
             target = tc.Isometry3d.Identity()
             target.translation = np.array([x, y, z])
             target.linear = rot_matrix
+
+            # Emit target pose for visualization
+            self.targetPoseSet.emit(target)
 
             # Get end effector link
             tcp_name = self.link_combo.currentText()

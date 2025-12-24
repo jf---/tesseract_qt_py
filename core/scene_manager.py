@@ -834,3 +834,30 @@ class SceneManager:
     def hide_workspace(self):
         """Remove workspace visualization."""
         self._clear_workspace()
+
+    def show_ik_target(self, pose):
+        """Display IK target as small axes/frame.
+
+        Args:
+            pose: Target transform (Isometry3d)
+        """
+        target_id = "ik_target"
+
+        # Clear existing target
+        if target_id in self.frame_actors:
+            self.renderer.RemoveActor(self.frame_actors[target_id])
+            del self.frame_actors[target_id]
+
+        # Create axes actor
+        axes = vtk.vtkAxesActor()
+        axes.SetShaftTypeToCylinder()
+        axes.SetCylinderRadius(0.02)
+        axes.SetConeRadius(0.05)
+        axes.SetTotalLength(0.15, 0.15, 0.15)  # Slightly larger than default frame
+        axes.AxisLabelsOff()
+
+        # Apply target transform
+        axes.SetUserTransform(self._isometry_to_vtk(pose))
+
+        self.frame_actors[target_id] = axes
+        self.renderer.AddActor(axes)
