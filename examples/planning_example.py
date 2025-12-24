@@ -1,38 +1,27 @@
 #!/usr/bin/env python3
-"""Example demonstrating motion planning with PlanningHelper."""
+"""Example demonstrating motion planning with high-level API."""
 from pathlib import Path
 import sys
 import numpy as np
 
-# Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tesseract_robotics.tesseract_environment import Environment
-from tesseract_robotics.tesseract_common import GeneralResourceLocator, FilesystemPath
-
+from tesseract_robotics.planning import Robot, Pose, TaskComposer
 from core.planning import PlanningHelper
 
 
 def main():
     """Run planning example."""
-    # Setup environment
-    locator = GeneralResourceLocator()
-    urdf_url = "package://tesseract_support/urdf/abb_irb2400.urdf"
-    srdf_url = "package://tesseract_support/urdf/abb_irb2400.srdf"
-    urdf_path = FilesystemPath(locator.locateResource(urdf_url).getFilePath())
-    srdf_path = FilesystemPath(locator.locateResource(srdf_url).getFilePath())
-
-    env = Environment()
-    if not env.init(urdf_path, srdf_path, locator):
-        raise RuntimeError("Failed to initialize environment")
+    # Load robot from tesseract_support
+    robot = Robot.from_tesseract_support("abb_irb2400")
 
     # Set initial state
-    joint_names = [f"joint_{i+1}" for i in range(6)]
-    env.setState(joint_names, np.ones(6) * 0.1)
+    joint_names = robot.get_joint_names("manipulator")
+    robot.set_joints(np.ones(6) * 0.1, joint_names=joint_names)
 
     # Create planner
-    config_path = Path("/path/to/task_composer_plugins.yaml")
-    planner = PlanningHelper(env, config_path)
+    composer = TaskComposer.from_config()
+    planner = PlanningHelper(robot, composer)
 
     # Define target poses
     targets = [
@@ -41,15 +30,14 @@ def main():
     ]
 
     # Plan freespace motion
-    result = planner.plan_freespace(targets)
+    print("Planning freespace motion...")
+    result = planner.plan_freespace(targets, pipeline="FreespacePipeline")
 
-    if result:
-        trajectory = planner.extract_joint_trajectory(result)
-        print(f"Planned {len(trajectory)} waypoints:")
-        for i, (positions, timestamp) in enumerate(trajectory):
-            print(f"  {i}: joints={positions}, time={timestamp:.3f}")
+    if result and result.successful:
+        print(f"Planning successful! {len(result)} waypoints")
     else:
-        print("Planning failed")
+        msg = result.message if result else "No result"
+        print(f"Planning failed: {msg}")
 
 
 if __name__ == "__main__":

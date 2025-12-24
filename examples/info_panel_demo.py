@@ -28,7 +28,7 @@ class InfoPanelDemo(QMainWindow):
         # Load environment
         self.env = Environment()
         loc = GeneralResourceLocator()
-        if not self.env.init(FilesystemPath(urdf_path), FilesystemPath(), loc):
+        if not self.env.init(FilesystemPath(urdf_path), loc):
             raise RuntimeError("Failed to load URDF")
 
         # Create widgets
