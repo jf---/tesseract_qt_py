@@ -913,94 +913,73 @@ class TesseractViewer(QMainWindow):
             return
 
         try:
+            from tesseract_robotics.planning import Robot, MotionProgram, CartesianTarget, Pose, TaskComposer
+
             self.task_composer_widget.clear_log()
             self.task_composer_widget.log("Starting task composer execution...")
             self.statusBar().showMessage("Executing task composer...")
 
-            # Try to use PlanningHelper if available
-            try:
-                from core.planning import PlanningHelper, HAS_LEGACY_API
+            # Get current TCP link and pose
+            tcp_link = getattr(self.info_panel, '_tcp_link', None)
+            if not tcp_link:
+                self.task_composer_widget.log("Error: No TCP link detected")
+                return
 
-                if not HAS_LEGACY_API:
-                    self.task_composer_widget.log("Error: Planning API not available")
-                    self.task_composer_widget.log("PlanningTaskComposerProblemUPtr not found in this version")
-                    self.statusBar().showMessage("Planning API not available")
-                    return
+            state = self._env.getState()
+            current_tf = state.link_transforms.get(tcp_link)
+            if not current_tf:
+                self.task_composer_widget.log(f"Error: Cannot get pose for '{tcp_link}'")
+                return
 
-                # Find task composer config
-                config_path = None
-                if self._paths[1]:  # SRDF loaded
-                    srdf_dir = self._paths[1].parent
-                    for candidate in ["task_composer.yaml", "task_composer_config.yaml"]:
-                        cfg = srdf_dir / candidate
-                        if cfg.exists():
-                            config_path = str(cfg)
-                            break
+            # Create robot wrapper and composer
+            robot = Robot(self._env, "manipulator")
+            composer = TaskComposer.from_config()
 
-                if not config_path:
-                    self.task_composer_widget.log("Error: No task composer config found")
-                    self.task_composer_widget.log("Looking for task_composer.yaml in SRDF directory")
-                    self.statusBar().showMessage("No task composer config found")
-                    return
+            # Get joint state
+            joint_names = robot.get_joint_names("manipulator")
+            joint_vals = [state.joints.get(j, 0.0) for j in joint_names]
 
-                self.task_composer_widget.log(f"Using config: {config_path}")
+            self.task_composer_widget.log(f"TCP: {tcp_link}")
+            self.task_composer_widget.log(f"Joints: {len(joint_names)}")
 
-                # Get current TCP pose as target
-                tcp_link = getattr(self.info_panel, '_tcp_link', None)
-                if not tcp_link:
-                    self.task_composer_widget.log("Error: No TCP link detected")
-                    self.statusBar().showMessage("No TCP link detected")
-                    return
+            # Create a simple motion: current -> offset -> current
+            import numpy as np
+            trans = current_tf.translation()
+            # Small Z offset for demo motion
+            target_pose = Pose.from_xyz_quat(trans[0], trans[1], trans[2] + 0.05, 0, 0, 0, 1)
 
-                # Get current joint values and FK to get target pose
-                state = self._env.getState()
-                current_pose = state.link_transforms.get(tcp_link)
-                if not current_pose:
-                    self.task_composer_widget.log(f"Error: Cannot get pose for TCP link '{tcp_link}'")
-                    self.statusBar().showMessage("Cannot get TCP pose")
-                    return
+            program = (MotionProgram("manipulator", tcp_frame=tcp_link, profile="DEFAULT")
+                .move_to(CartesianTarget(target_pose, profile="DEFAULT")))
 
-                self.task_composer_widget.log(f"Planning from current state to TCP: {tcp_link}")
+            # Use selected pipeline from widget
+            pipeline = self.task_composer_widget.current_task() or "FreespacePipeline"
+            self.task_composer_widget.log(f"Planning with {pipeline}...")
+            result = composer.plan(robot, program, pipeline=pipeline)
 
-                # Create planner and execute
-                planner = PlanningHelper(self._env, config_path)
-                result = planner.plan_freespace([current_pose])
+            if result and result.successful:
+                self.task_composer_widget.log(f"Success! {len(result)} waypoints")
+                self.statusBar().showMessage(f"Planning succeeded: {len(result)} waypoints")
 
-                if result is None:
-                    self.task_composer_widget.log("Planning failed - no result returned")
-                    self.statusBar().showMessage("Planning failed")
-                    return
+                # Extract trajectory for player
+                traj_data = []
+                for i, wp in enumerate(result):
+                    traj_data.append({
+                        "time": float(i) * 0.1,
+                        "joints": {joint_names[j]: wp[j] for j in range(len(joint_names))}
+                    })
 
-                # Extract trajectory
-                trajectory = planner.extract_joint_trajectory(result)
-                if not trajectory:
-                    self.task_composer_widget.log("Warning: No trajectory in result")
-                    self.statusBar().showMessage("No trajectory in result")
-                    return
-
-                self.task_composer_widget.log(f"Success! Generated {len(trajectory)} waypoints")
-
-                # Load into player
-                self.traj_player.load_trajectory(trajectory)
-
-                # Load into plot
-                joint_names = list(self.joints.sliders.keys())
-                traj_data = [{"time": wp.time, "joints": wp.joints} for wp in trajectory]
-                self.plot.load_trajectory(traj_data, joint_names)
-
-                self.statusBar().showMessage(f"Planning succeeded: {len(trajectory)} waypoints")
-                logger.info(f"Task composer execution succeeded: {len(trajectory)} waypoints")
-
-            except ImportError as ie:
-                # Fallback if PlanningHelper not available
-                self.task_composer_widget.log(f"Error: Cannot import PlanningHelper: {ie}")
-                self.task_composer_widget.log("Fallback: Task composer execution would run here")
-                self.statusBar().showMessage("Planning helper not available")
+                if traj_data:
+                    self.plot.load_trajectory(traj_data, joint_names)
+                    self.task_composer_widget.log("Trajectory loaded into plot")
+            else:
+                msg = result.message if result else "No result"
+                self.task_composer_widget.log(f"Planning failed: {msg}")
+                self.statusBar().showMessage("Planning failed")
 
         except Exception as e:
-            logger.exception(f"Task composer execution failed: {e}")
+            logger.exception(f"Task composer failed: {e}")
             self.task_composer_widget.log(f"Error: {str(e)}")
-            self.statusBar().showMessage(f"Execution failed: {str(e)[:50]}")
+            self.statusBar().showMessage(f"Failed: {str(e)[:50]}")
 
     def _on_acm_entry_added(self, link1: str, link2: str, reason: str):
         """Handle ACM entry added."""
@@ -1206,10 +1185,39 @@ class TesseractViewer(QMainWindow):
             if tcp_link:
                 self.tcp_widget.set_tcp(tcp_link)
 
+            # Populate Task Composer
+            self._populate_task_composer()
+
             logger.info("P2 widgets populated")
 
         except Exception as e:
             logger.exception(f"Failed to populate P2 widgets: {e}")
+
+    def _populate_task_composer(self):
+        """Populate task composer widget with available pipelines."""
+        try:
+            from tesseract_robotics.planning import TaskComposer
+            composer = TaskComposer.from_config()
+
+            # Get available pipelines/tasks
+            pipelines = [
+                "FreespacePipeline",
+                "CartesianPipeline",
+                "TrajOptPipeline",
+                "OMPLPipeline",
+            ]
+            self.task_composer_widget.set_tasks(pipelines, default="FreespacePipeline")
+
+            # Set executors
+            self.task_composer_widget.set_executors(["TaskflowExecutor"], default="TaskflowExecutor")
+
+            # Set environment path
+            if self._paths[0]:
+                self.task_composer_widget.set_environment_name(str(self._paths[0].name))
+
+            logger.info("Task composer populated")
+        except Exception as e:
+            logger.warning(f"Failed to populate task composer: {e}")
 
     def _load_group_states_from_env(self):
         """Load group states from SRDF into widget."""
