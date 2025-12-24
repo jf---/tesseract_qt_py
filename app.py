@@ -53,6 +53,7 @@ from widgets.manipulation_widget import ManipulationWidget
 from widgets.group_states_editor import GroupStatesEditorWidget
 from widgets.tcp_editor import TCPEditorWidget
 from widgets.task_composer_widget import TaskComposerWidget
+from widgets.log_widget import LogWidget
 from core.state_manager import StateManager
 
 
@@ -118,6 +119,16 @@ class TesseractViewer(QMainWindow):
 
         logger.add(status_sink, level="INFO", format="{message}")
 
+        # Also send logs to log widget
+        def log_widget_sink(message):
+            record = message.record
+            level = record["level"].name
+            time_str = record["time"].strftime("%H:%M:%S")
+            text = f"{time_str} {level:8} {record['message']}"
+            self.log_widget.append_log(text, level)
+
+        logger.add(log_widget_sink, level="DEBUG", format="{message}")
+
     def status(self, msg: str, level: str = "info"):
         """Show message in status bar and log it."""
         getattr(logger, level.lower())(msg)
@@ -177,6 +188,11 @@ class TesseractViewer(QMainWindow):
         self.task_composer_dock.setWidget(self.task_composer_widget)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.task_composer_dock)
 
+        self.log_dock = QDockWidget("Logs", self)
+        self.log_widget = LogWidget()
+        self.log_dock.setWidget(self.log_widget)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.log_dock)
+
         # Tabify right panel docks (Manipulation first - has FK/IK)
         self.tabifyDockWidget(self.manip_dock, self.ik_dock)
         self.tabifyDockWidget(self.ik_dock, self.info_dock)
@@ -186,6 +202,7 @@ class TesseractViewer(QMainWindow):
         self.tabifyDockWidget(self.kin_groups_dock, self.group_states_dock)
         self.tabifyDockWidget(self.group_states_dock, self.tcp_dock)
         self.tabifyDockWidget(self.tcp_dock, self.task_composer_dock)
+        self.tabifyDockWidget(self.task_composer_dock, self.log_dock)
         self.manip_dock.raise_()
 
         self.traj_dock = QDockWidget("Trajectory Player", self)
@@ -252,6 +269,7 @@ class TesseractViewer(QMainWindow):
         view_menu.addAction(self.group_states_dock.toggleViewAction())
         view_menu.addAction(self.tcp_dock.toggleViewAction())
         view_menu.addAction(self.task_composer_dock.toggleViewAction())
+        view_menu.addAction(self.log_dock.toggleViewAction())
         view_menu.addSeparator()
         view_menu.addAction("Show Workspace...", self._show_workspace)
         view_menu.addAction("Clear Workspace", self._clear_workspace)
