@@ -70,6 +70,7 @@ tesseract_qt_py/
 │   ├── contact_compute_widget.py # Contact params
 │   ├── kinematic_groups_editor.py # Chain/joints/links
 │   ├── task_composer_widget.py # Task config/logs
+│   ├── log_widget.py      # Real-time loguru log viewer
 │   ├── tool_path_dialog.py # Tool path file picker
 │   └── environment_dialog.py # URDF/SRDF loader
 ├── examples/
@@ -162,6 +163,7 @@ from core.scene_manager import SceneManager  # not ..core
 - Contact compute params
 - Kinematic groups (chain/joints/links)
 - Task composer (config/logs)
+- Log viewer (color-coded, level filter)
 - Tool path/environment dialogs
 
 ### File Operations
@@ -217,3 +219,25 @@ show_fk_chain(joint_values, base_link, tip_link)
 sample_workspace(joint_names, joint_limits, n_samples)
 show_workspace(points, scalars)
 ```
+
+## Development Status (v0.1 - branch jf/v01)
+
+### Recent Additions
+- `widgets/log_widget.py` - loguru log viewer with color-coding, level filter, auto-scroll
+- Window state persistence (geometry, dock positions via QSettings)
+- closeEvent cleanup (stops timers, saves state)
+- Tooltips on cartesian_editor, manipulation_widget
+- Simplified `run_app.sh` using conda env paths
+
+### Logging
+All modules use loguru. Converted from print():
+- `core/scene_manager.py`
+- `widgets/ik_widget.py`
+- `widgets/info_panel.py`
+
+### Known Issues
+- Qt dock objectName warnings (cosmetic, affects state restore)
+- Fix: `dock.setObjectName("dock_name")` for each QDockWidget in app.py
+
+### Test Coverage
+113 tests passing. Gaps: CameraController, PlanningHelper, ContactVisualizer
