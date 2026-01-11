@@ -1,5 +1,5 @@
 """Demo workspace visualization."""
-import numpy as np
+
 
 
 def visualize_workspace(scene_manager, joint_names, joint_limits, tcp_link, n_samples=1000):

@@ -1,21 +1,21 @@
 """Unified FK/IK widget with bidirectional sync."""
+
 from __future__ import annotations
 
-from math import atan2, asin, pi
+from math import atan2
+
 import numpy as np
-
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QGroupBox,
-    QSplitter,
     QLabel,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt
 
-from widgets.joint_slider import JointSliderWidget
 from widgets.cartesian_editor import CartesianEditorWidget
+from widgets.joint_slider import JointSliderWidget
 
 
 def rotation_to_rpy(rotation: np.ndarray) -> tuple[float, float, float]:
@@ -129,9 +129,9 @@ class FKIKWidget(QWidget):
             else:
                 self._joint_names = []
 
-            # Initialize IK display from current joint values
-            if self._joint_names:
-                self._update_ik_from_fk(self.joint_slider.get_values())
+            # NOTE: Don't call _update_ik_from_fk() here!
+            # joint_slider still has OLD robot's joints at this point.
+            # IK display will update when set_joints() is called.
 
         except Exception as e:
             self._joint_names = []
@@ -140,16 +140,10 @@ class FKIKWidget(QWidget):
     def _create_chain_group(self, env, tcp_link: str):
         """Create a kinematic group from base_link to tcp_link."""
         try:
-            from tesseract_robotics.tesseract_kinematics import KinematicsPluginFactory
-            from tesseract_robotics.tesseract_scene_graph import SceneGraph
-
             sg = env.getSceneGraph()
 
             # Find base link (root of scene graph)
             base_link = sg.getRoot()
-
-            # Create kinematic group using chain from base to tcp
-            kin_info = env.getKinematicsInformation()
 
             # Try creating via environment's kinematic factory
             factory = env.getKinematicsFactory()
@@ -233,7 +227,9 @@ class FKIKWidget(QWidget):
         except Exception as e:
             self.status_label.setText(f"FK: {e}")
 
-    def _on_ik_pose_changed(self, x: float, y: float, z: float, roll: float, pitch: float, yaw: float):
+    def _on_ik_pose_changed(
+        self, x: float, y: float, z: float, roll: float, pitch: float, yaw: float
+    ):
         """Handle real-time IK pose change from Cartesian sliders."""
         if self._syncing:
             return
@@ -253,9 +249,9 @@ class FKIKWidget(QWidget):
         self._syncing = True
 
         try:
-            from tesseract_robotics.tesseract_kinematics import KinGroupIKInput
             import tesseract_robotics.tesseract_common as tc
             from scipy.spatial.transform import Rotation
+            from tesseract_robotics.tesseract_kinematics import KinGroupIKInput
 
             # Get fresh kinematic group (stored ref becomes invalid after setState)
             kin_group = self._env.getKinematicGroup(self._group_name)
@@ -269,7 +265,7 @@ class FKIKWidget(QWidget):
             x, y, z, roll, pitch, yaw = self.cartesian_widget.get_pose()
 
             # Build target transform using scipy (more robust)
-            rot = Rotation.from_euler('xyz', [roll, pitch, yaw])
+            rot = Rotation.from_euler("xyz", [roll, pitch, yaw])
             mat = np.eye(4)
             mat[:3, :3] = rot.as_matrix()
             mat[:3, 3] = [x, y, z]
@@ -294,7 +290,9 @@ class FKIKWidget(QWidget):
             if solutions and len(solutions) > 0:
                 # Use first solution
                 sol = solutions[0]
-                joint_values = {self._joint_names[i]: float(sol[i]) for i in range(len(self._joint_names))}
+                joint_values = {
+                    self._joint_names[i]: float(sol[i]) for i in range(len(self._joint_names))
+                }
 
                 # Update FK sliders (without emitting their signal)
                 for name, value in joint_values.items():

@@ -2,17 +2,14 @@
 
 Uses the high-level tesseract_robotics.planning API.
 """
+
 from __future__ import annotations
 
-import numpy as np
-from pathlib import Path
-
 from tesseract_robotics.planning import (
-    Robot,
-    MotionProgram,
     CartesianTarget,
-    StateTarget,
+    MotionProgram,
     Pose,
+    Robot,
     TaskComposer,
 )
 
@@ -25,7 +22,7 @@ class PlanningHelper:
         self.composer = composer or TaskComposer.from_config()
 
     @classmethod
-    def from_env(cls, env, manipulator: str = "manipulator") -> "PlanningHelper":
+    def from_env(cls, env, manipulator: str = "manipulator") -> PlanningHelper:
         """Create from existing environment."""
         robot = Robot(env, manipulator)
         return cls(robot)

@@ -1,7 +1,9 @@
 """signal tests for P1 widgets - test signal emission and payload data."""
-import pytest
+
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -30,6 +32,7 @@ class TestJointSliderSignals:
     def qapp(self):
         try:
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance() or QApplication([])
             yield app
         except ImportError:
@@ -52,6 +55,7 @@ class TestJointSliderSignals:
         # verify signal payload: (name, value in radians)
         assert spy[0][0] == "j1"
         import math
+
         assert abs(spy[0][1] - math.radians(30.0)) < 0.001
 
     def test_joint_values_changed_signal_emission(self, qapp):
@@ -74,6 +78,7 @@ class TestJointSliderSignals:
         assert "j1" in values
         assert "j2" in values
         import math
+
         assert abs(values["j1"] - math.radians(30.0)) < 0.001
         assert values["j2"] == 0.0
 
@@ -92,6 +97,7 @@ class TestJointSliderSignals:
         assert len(spy) == 1
         assert spy[0][0] == "j1"
         import math
+
         assert abs(spy[0][1] - math.radians(45.0)) < 0.001
 
     def test_joint_value_changed_via_slider(self, qapp):
@@ -187,6 +193,7 @@ class TestTrajectoryPlayerSignals:
     def qapp(self):
         try:
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance() or QApplication([])
             yield app
         except ImportError:
@@ -339,6 +346,7 @@ class TestSceneTreeSignals:
     def qapp(self):
         try:
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance() or QApplication([])
             yield app
         except ImportError:
@@ -346,9 +354,10 @@ class TestSceneTreeSignals:
 
     def test_link_selected_signal(self, qapp):
         """test linkSelected signal emitted when tree item selected."""
-        from widgets.scene_tree import SceneTreeWidget
-        from PySide6.QtWidgets import QTreeWidgetItem
         from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from widgets.scene_tree import SceneTreeWidget
 
         w = SceneTreeWidget()
 
@@ -367,9 +376,10 @@ class TestSceneTreeSignals:
 
     def test_link_visibility_changed_signal(self, qapp):
         """test linkVisibilityChanged signal emitted when checkbox toggled."""
-        from widgets.scene_tree import SceneTreeWidget
-        from PySide6.QtWidgets import QTreeWidgetItem
         from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from widgets.scene_tree import SceneTreeWidget
 
         w = SceneTreeWidget()
 
@@ -392,9 +402,10 @@ class TestSceneTreeSignals:
 
     def test_link_visibility_changed_to_visible(self, qapp):
         """test linkVisibilityChanged signal with visible=True."""
-        from widgets.scene_tree import SceneTreeWidget
-        from PySide6.QtWidgets import QTreeWidgetItem
         from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from widgets.scene_tree import SceneTreeWidget
 
         w = SceneTreeWidget()
 
@@ -443,9 +454,10 @@ class TestSceneTreeSignals:
 
     def test_link_selected_signal_payload(self, qapp):
         """test linkSelected signal payload is string link name."""
-        from widgets.scene_tree import SceneTreeWidget
-        from PySide6.QtWidgets import QTreeWidgetItem
         from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from widgets.scene_tree import SceneTreeWidget
 
         w = SceneTreeWidget()
 
@@ -464,9 +476,10 @@ class TestSceneTreeSignals:
 
     def test_no_signal_on_joint_selection(self, qapp):
         """test linkSelected NOT emitted when joint item selected."""
-        from widgets.scene_tree import SceneTreeWidget
-        from PySide6.QtWidgets import QTreeWidgetItem
         from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from widgets.scene_tree import SceneTreeWidget
 
         w = SceneTreeWidget()
 
@@ -491,6 +504,7 @@ class TestACMEditorSignals:
     def qapp(self):
         try:
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance() or QApplication([])
             yield app
         except ImportError:
@@ -630,6 +644,7 @@ class TestKinematicGroupsEditorSignals:
     def qapp(self):
         try:
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance() or QApplication([])
             yield app
         except ImportError:
@@ -811,6 +826,7 @@ class TestManipulationWidgetSignals:
     def qapp(self):
         try:
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance() or QApplication([])
             yield app
         except ImportError:
@@ -922,6 +938,7 @@ class TestManipulationWidgetSignals:
 
         assert w.current_group() == "leg"
 
+
 class TestGroupStatesEditorSignals:
     """test GroupStatesEditorWidget signals."""
 
@@ -929,6 +946,7 @@ class TestGroupStatesEditorSignals:
     def qapp(self):
         try:
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance() or QApplication([])
             yield app
         except ImportError:
@@ -1025,6 +1043,7 @@ class TestTCPEditorSignals:
     def qapp(self):
         try:
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance() or QApplication([])
             yield app
         except ImportError:
@@ -1113,6 +1132,7 @@ class TestTaskComposerSignals:
     def qapp(self):
         try:
             from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance() or QApplication([])
             yield app
         except ImportError:
@@ -1168,26 +1188,29 @@ class TestTaskComposerSignals:
         from widgets.task_composer_widget import TaskComposerWidget
 
         w = TaskComposerWidget()
-        assert hasattr(w, 'executor_combo_box')
-        assert hasattr(w, 'task_combo_box')
+        assert hasattr(w, "executor_combo_box")
+        assert hasattr(w, "task_combo_box")
 
 
 class TestScaleCoherence:
     """test VTK actor scale matches tesseract geometry."""
 
-    urdf = '/Users/jelle/Code/CADCAM/tesseract_python_nanobind/ws/src/tesseract/tesseract_support/urdf/abb_irb2400.urdf'
-    srdf = '/Users/jelle/Code/CADCAM/tesseract_python_nanobind/ws/src/tesseract/tesseract_support/urdf/abb_irb2400.srdf'
+    urdf = "/Users/jelle/Code/CADCAM/tesseract_python_nanobind/ws/src/tesseract/tesseract_support/urdf/abb_irb2400.urdf"
+    srdf = "/Users/jelle/Code/CADCAM/tesseract_python_nanobind/ws/src/tesseract/tesseract_support/urdf/abb_irb2400.srdf"
 
     @pytest.fixture
     def env_and_scene(self):
         """create environment and scene manager."""
         import os
-        import vtk
-        os.environ.pop('DISPLAY', None)
-        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
-        from tesseract_robotics.tesseract_environment import Environment
+        import vtk
+
+        os.environ.pop("DISPLAY", None)
+        os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
         from tesseract_robotics.tesseract_common import GeneralResourceLocator
+        from tesseract_robotics.tesseract_environment import Environment
+
         from core.scene_manager import SceneManager
 
         if not Path(self.urdf).exists():
@@ -1210,6 +1233,7 @@ class TestScaleCoherence:
     def test_actor_bounds_match_geometry(self, env_and_scene):
         """test VTK actor bounds match tesseract mesh geometry (within 5%)."""
         import numpy as np
+
         env, scene = env_and_scene
 
         for link in env.getSceneGraph().getLinks():
@@ -1229,7 +1253,9 @@ class TestScaleCoherence:
             # VTK actor bounds
             actor = scene.link_actors[name][0]
             bounds = actor.GetBounds()
-            actor_size = np.array([bounds[1]-bounds[0], bounds[3]-bounds[2], bounds[5]-bounds[4]])
+            actor_size = np.array(
+                [bounds[1] - bounds[0], bounds[3] - bounds[2], bounds[5] - bounds[4]]
+            )
 
             # sizes should match within 5%
             for i, (gs, as_) in enumerate(zip(geom_size, actor_size)):
@@ -1240,22 +1266,23 @@ class TestScaleCoherence:
     def test_actor_motion_matches_fk(self, env_and_scene):
         """test VTK actor moves correct distance when joints change."""
         import numpy as np
+
         env, scene = env_and_scene
 
         # get initial tool0 position
         state0 = env.getState()
-        pos0 = np.array(state0.link_transforms['link_6'].translation())
+        pos0 = np.array(state0.link_transforms["link_6"].translation())
 
         # get VTK actor center
-        actor = scene.link_actors['link_6'][0]
+        actor = scene.link_actors["link_6"][0]
         vtk_pos0 = np.array(actor.GetCenter())
 
         # apply joint motion
-        scene.update_joint_values({'joint_1': 1.5, 'joint_2': -0.5, 'joint_3': 0.5})
+        scene.update_joint_values({"joint_1": 1.5, "joint_2": -0.5, "joint_3": 0.5})
 
         # get new positions
         state1 = env.getState()
-        pos1 = np.array(state1.link_transforms['link_6'].translation())
+        pos1 = np.array(state1.link_transforms["link_6"].translation())
         vtk_pos1 = np.array(actor.GetCenter())
 
         # FK motion
@@ -1264,12 +1291,14 @@ class TestScaleCoherence:
 
         # VTK motion should match FK motion within 10%
         assert fk_motion > 0.3, f"FK motion too small: {fk_motion:.3f}m"
-        assert abs(vtk_motion - fk_motion) / fk_motion < 0.1, \
+        assert abs(vtk_motion - fk_motion) / fk_motion < 0.1, (
             f"Motion mismatch: FK={fk_motion:.3f}m, VTK={vtk_motion:.3f}m"
+        )
 
     def test_link_positions_coherent(self, env_and_scene):
         """test all VTK actor positions within 10cm of tesseract FK."""
         import numpy as np
+
         env, scene = env_and_scene
         state = env.getState()
 

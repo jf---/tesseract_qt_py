@@ -1,32 +1,32 @@
 """Log viewer widget for displaying loguru logs."""
+
 from __future__ import annotations
 
 from collections import deque
 
-from PySide6.QtCore import Qt, Slot
-from PySide6.QtGui import QTextCharFormat, QColor, QFont
+from PySide6.QtCore import Slot
+from PySide6.QtGui import QColor, QFont, QTextCharFormat
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPlainTextEdit,
-    QPushButton,
     QCheckBox,
     QComboBox,
+    QHBoxLayout,
     QLabel,
+    QPlainTextEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-
 
 # Log levels in order (lowest to highest)
 LOG_LEVELS = ["DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
 
 # Color scheme with foreground and background for contrast in light/dark modes
 LOG_STYLES = {
-    "DEBUG":    {"fg": "#888888", "bg": "#F0F0F0"},
-    "INFO":     {"fg": "#1A1A1A", "bg": "#FFFFFF"},
-    "SUCCESS":  {"fg": "#155724", "bg": "#D4EDDA"},
-    "WARNING":  {"fg": "#856404", "bg": "#FFF3CD"},
-    "ERROR":    {"fg": "#721C24", "bg": "#F8D7DA"},
+    "DEBUG": {"fg": "#888888", "bg": "#F0F0F0"},
+    "INFO": {"fg": "#1A1A1A", "bg": "#FFFFFF"},
+    "SUCCESS": {"fg": "#155724", "bg": "#D4EDDA"},
+    "WARNING": {"fg": "#856404", "bg": "#FFF3CD"},
+    "ERROR": {"fg": "#721C24", "bg": "#F8D7DA"},
     "CRITICAL": {"fg": "#FFFFFF", "bg": "#DC3545"},
 }
 
@@ -142,3 +142,16 @@ class LogWidget(QWidget):
         if self.auto_scroll_cb.isChecked():
             scrollbar = self.log_output.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
+
+    def loguru_sink(self, message):
+        """Loguru sink function for receiving log messages.
+
+        Usage:
+            from loguru import logger
+            logger.add(log_widget.loguru_sink, format="{time:HH:mm:ss} | {level: <8} | {message}")
+        """
+        record = message.record
+        level = record["level"].name
+        # Extract the formatted message string
+        text = str(message).rstrip()
+        self.append_log(text, level)

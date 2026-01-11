@@ -1,12 +1,25 @@
 """Allowed Collision Matrix editor widget."""
+
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QSlider,
-    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
-    QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QAbstractItemView,
+    QAbstractItemView,
     QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSlider,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
 

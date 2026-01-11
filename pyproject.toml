@@ -11,11 +11,9 @@ authors = [
 keywords = ["robotics", "visualization", "tesseract", "qt", "vtk"]
 
 dependencies = [
-    "pyside6>=6.5",
-    "vtk>=9.0",
     "numpy>=1.21",
     "pyqtgraph>=0.13",
-    "tesseract-robotics-nanobind>=0.7.1",
+    # pyside6, vtk, tesseract-robotics come from conda overlay (tesseract_nb)
 ]
 
 [project.optional-dependencies]
@@ -44,6 +42,11 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+ignore = ["E402", "E501"]  # import order intentional, line length flexible
+
+[tool.ruff.lint.per-file-ignores]
+"tests/test_examples.py" = ["F401"]  # import tests
+"scripts/diagnose_*.py" = ["F401"]  # diagnostic scripts
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -51,3 +54,30 @@ python_files = ["test_*.py"]
 addopts = "-v --tb=short"
 qt_api = "pyside6"
 qt_default_raising = true
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["osx-arm64"]
+
+[tool.pixi.dependencies]
+python = "3.12.*"
+# Dev deps - tesseract/vtk/pyside6 come from overlay
+pytest = ">=7.0"
+pytest-qt = ">=4.3.0"
+pytest-xdist = ">=3.0"
+ruff = ">=0.8.0"
+pre-commit = ">=3.0"
+loguru = ">=0.7"
+
+[tool.pixi.pypi-dependencies]
+tesseract-qt-py = { path = ".", editable = true }
+
+[tool.pixi.activation]
+scripts = ["scripts/activate_tesseract.sh"]
+
+[tool.pixi.tasks]
+test = "python -m pytest tests -x -q -n auto"
+app = { cmd = "python app.py", description = "Launch viewer" }
+check = "python -c \"import tesseract_robotics; import vtk; import PySide6; print('all deps OK')\""
+lint = "ruff check ."
+fmt = "ruff format ."

@@ -94,18 +94,40 @@ tesseract_qt_py/
 ## Run
 
 ```bash
-conda activate tesseract_nb
-cd ~/Code/CADCAM/tesseract_qt_py
-python app.py /path/to/robot.urdf [/path/to/robot.srdf]
+# Preferred: use pixi (overlays tesseract_nb conda env)
+pixi run app /path/to/robot.urdf [/path/to/robot.srdf]
+
+# Or directly
+./run_app.sh /path/to/robot.urdf
 ```
 
 ## Testing
 
-**CRITICAL: ALWAYS run tests in parallel with xdist:**
 ```bash
-pytest tests/ -n auto -v --tb=short
+pixi run test  # parallel with xdist
 ```
-Never run `pytest` without `-n auto` - parallel execution is mandatory for acceptable performance.
+
+## Pixi Tasks
+
+- `pixi run test` - parallel tests
+- `pixi run app` - launch viewer
+- `pixi run check` - verify deps
+- `pixi run lint` / `pixi run fmt` - ruff
+
+## CRITICAL: tesseract 0.33+ URDF Requirements
+
+URDFs must have `tesseract:make_convex` attribute on `<robot>` element:
+```xml
+<robot name="my_robot"
+       xmlns:tesseract="http://www.tesseract.com"
+       tesseract:make_convex="true">
+```
+- `true` = auto-convert collision meshes to convex hulls (old default)
+- `false` = use original mesh geometry (slower but more accurate)
+
+## Editable Install Path Gotcha
+
+When `tesseract_robotics` is installed in editable mode, `get_tesseract_support_path()` returns the source directory which may lack data files. The app searches `sys.path` for the installed package location as fallback.
 
 ## Keyboard Shortcuts
 
@@ -133,6 +155,33 @@ Use absolute imports (not relative):
 ```python
 from core.scene_manager import SceneManager  # not ..core
 ```
+
+## CRITICAL: Separate UI from Logic
+
+**NEVER mix UI code (dialogs, progress bars, message boxes) into business logic methods.**
+
+Pattern: pure logic method + UI wrapper:
+```python
+def load(self, urdf, srdf=None):
+    """Pure loading logic - no Qt dialogs."""
+    logger.info("Loading...")
+    # ... business logic that raises on failure ...
+
+def _load_with_progress(self, urdf, srdf=None):
+    """UI wrapper with progress dialog."""
+    progress = QProgressDialog(...)
+    try:
+        self.load(urdf, srdf)
+    except Exception as e:
+        QMessageBox.critical(self, "Error", str(e))
+    finally:
+        progress.close()
+```
+
+Benefits:
+- Logic methods are testable without Qt event loop
+- Logic can be called programmatically without UI overhead
+- UI is isolated and easy to modify/replace
 
 ## Features
 
@@ -220,24 +269,59 @@ sample_workspace(joint_names, joint_limits, n_samples)
 show_workspace(points, scalars)
 ```
 
-## Development Status (v0.1 - branch jf/v01)
+## Development Status (branch jf/update_tesseract_033)
+
+### tesseract 0.33 Update
+- Added `tesseract:make_convex` to test fixture URDF
+- Pixi environment overlaying tesseract_nb conda env
+- Robust default URDF path resolution for editable installs
 
 ### Recent Additions
-- `widgets/log_widget.py` - loguru log viewer with color-coding, level filter, auto-scroll
+- `widgets/log_widget.py` - loguru log viewer with color-coding, level filter, auto-scroll, `loguru_sink()` method
 - Window state persistence (geometry, dock positions via QSettings)
 - closeEvent cleanup (stops timers, saves state)
 - Tooltips on cartesian_editor, manipulation_widget
-- Simplified `run_app.sh` using conda env paths
 
 ### Logging
-All modules use loguru. Converted from print():
+
+**Python (loguru)** - all modules use loguru:
+
 - `core/scene_manager.py`
 - `widgets/ik_widget.py`
 - `widgets/info_panel.py`
 
+**Tesseract C++ logging** - ALWAYS enable when debugging crashes:
+
+```python
+import tesseract_robotics.tesseract_common as tc
+
+# Levels: TRACE, DEBUG, INFO, WARN, ERROR, FATAL
+tc.setLogLevel(tc.LogLevel.DEBUG)
+
+# Call BEFORE loading environment to catch init errors
+```
+
+C++ warnings appear as `Warning:` or `Error:` in stderr. Enable TRACE/DEBUG to see what tesseract is doing before a segfault. This is non-negotiable for crash debugging.
+
 ### Known Issues
-- Qt dock objectName warnings (cosmetic, affects state restore)
-- Fix: `dock.setObjectName("dock_name")` for each QDockWidget in app.py
+
+- ~~Qt dock objectName warnings~~ **FIXED** - added setObjectName to all docks
+- ~~URDF reload crash when switching between different robots~~ **FIXED**
+  - Fix: Removed premature `_update_ik_from_fk()` call
+
+## CRITICAL: URDF/SRDF Are Always Paired
+
+**NEVER delete or separate URDF from its SRDF.** They are a matched pair:
+
+- URDF defines geometry and kinematics
+- SRDF defines semantic info (groups, ACM, states, plugin configs)
+
+When copying robot files to fixtures, copy ALL related files:
+
+- `robot.urdf`
+- `robot.srdf`
+- Any referenced config YAMLs (check SRDF for `<kinematics_plugin_config>`)
+- Mesh files if using `package://` paths
 
 ### Test Coverage
-113 tests passing. Gaps: CameraController, PlanningHelper, ContactVisualizer
+108 tests passing, 5 skipped. Gaps: CameraController, PlanningHelper, ContactVisualizer

@@ -1,11 +1,11 @@
 """Camera controllers for VTK viewport."""
+
 from __future__ import annotations
 
 from enum import Enum
 from typing import TYPE_CHECKING
 
-import vtk
-from PySide6.QtCore import Qt, QPoint
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent, QWheelEvent
 
 if TYPE_CHECKING:
@@ -140,6 +140,7 @@ class CameraController:
 
         # Compute diagonal distance
         import math
+
         diag = math.sqrt((xmax - xmin) ** 2 + (ymax - ymin) ** 2 + (zmax - zmin) ** 2)
         dist = diag * 1.5  # Add some margin
 
@@ -202,7 +203,7 @@ class CameraController:
         """Set isometric view."""
         fp = self.camera.GetFocalPoint()
         dist = self.camera.GetDistance()
-        d = dist / (3 ** 0.5)
+        d = dist / (3**0.5)
         self.camera.SetPosition(fp[0] + d, fp[1] + d, fp[2] + d)
         self.camera.SetViewUp(0, 0, 1)
         self._render()

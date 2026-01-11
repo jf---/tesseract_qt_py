@@ -1,14 +1,15 @@
 """VTK render widget with Qt6 integration."""
+
 from __future__ import annotations
 
 import vtk
-from PySide6.QtCore import Signal, Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QToolBar, QMenu
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QMenu, QToolBar, QVBoxLayout, QWidget
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from core.scene_manager import SceneManager
 from core.camera_control import CameraController, ViewMode
+from core.scene_manager import SceneManager
 
 
 class RenderWidget(QWidget):
@@ -265,7 +266,7 @@ class RenderWidget(QWidget):
         # Temporarily hide grid/workspace to exclude from bounds
         grid_vis = self.grid_actor.GetVisibility()
         self.grid_actor.SetVisibility(False)
-        ws_actor = getattr(self.scene, 'workspace_actor', None)
+        ws_actor = getattr(self.scene, "workspace_actor", None)
         ws_vis = ws_actor.GetVisibility() if ws_actor else False
         if ws_actor:
             ws_actor.SetVisibility(False)
@@ -389,9 +390,9 @@ class RenderWidget(QWidget):
         append.Update()
         merged = append.GetOutput()
 
-        if suffix == '.stl':
+        if suffix == ".stl":
             writer = vtk.vtkSTLWriter()
-        elif suffix == '.obj':
+        elif suffix == ".obj":
             writer = vtk.vtkOBJWriter()
         else:
             raise ValueError(f"Unsupported format: {suffix}")

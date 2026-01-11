@@ -1,4 +1,5 @@
 """Demo of RobotInfoPanel widget."""
+
 from __future__ import annotations
 
 import sys
@@ -6,9 +7,8 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QMainWindow, QSplitter
-
+from tesseract_robotics.tesseract_common import FilesystemPath, GeneralResourceLocator
 from tesseract_robotics.tesseract_environment import Environment
-from tesseract_robotics.tesseract_common import GeneralResourceLocator, FilesystemPath
 from tesseract_robotics.tesseract_scene_graph import JointType
 
 sys.path.insert(0, str(Path(__file__).parent.parent))

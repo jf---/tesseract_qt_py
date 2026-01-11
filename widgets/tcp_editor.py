@@ -1,15 +1,16 @@
 """TCP (Tool Center Point) editor widget."""
+
 from __future__ import annotations
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QComboBox,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
-    QComboBox,
     QPushButton,
-    QGroupBox,
+    QVBoxLayout,
+    QWidget,
 )
 
 from widgets.cartesian_editor import CartesianEditorWidget

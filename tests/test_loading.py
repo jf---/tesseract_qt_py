@@ -1,4 +1,5 @@
 """Test URDF loading and core functionality."""
+
 from pathlib import Path
 
 import pytest
@@ -8,8 +9,8 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 def test_urdf_loads():
     """Test basic URDF loading."""
-    from tesseract_robotics.tesseract_environment import Environment
     from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_environment import Environment
 
     urdf = FIXTURES / "abb_irb2400.urdf"
     env = Environment()
@@ -18,7 +19,7 @@ def test_urdf_loads():
     assert env.init(str(urdf), loc), f"Failed to load {urdf}"
 
     sg = env.getSceneGraph()
-    links = [l.getName() for l in sg.getLinks()]
+    links = [lnk.getName() for lnk in sg.getLinks()]
     joints = [j.getName() for j in sg.getJoints()]
 
     assert "base_link" in links
@@ -29,8 +30,8 @@ def test_urdf_loads():
 
 def test_joint_limits():
     """Test joint limits are parsed correctly."""
-    from tesseract_robotics.tesseract_environment import Environment
     from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_environment import Environment
     from tesseract_robotics.tesseract_scene_graph import JointType
 
     urdf = FIXTURES / "abb_irb2400.urdf"
@@ -54,8 +55,8 @@ def test_joint_limits():
 
 def test_state_transforms():
     """Test state and link transforms."""
-    from tesseract_robotics.tesseract_environment import Environment
     from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_environment import Environment
 
     urdf = FIXTURES / "abb_irb2400.urdf"
     env = Environment()
@@ -75,9 +76,10 @@ def test_state_transforms():
 def test_scene_manager_load():
     """Test SceneManager loads environment."""
     import vtk
-    from core.scene_manager import SceneManager
-    from tesseract_robotics.tesseract_environment import Environment
     from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_environment import Environment
+
+    from core.scene_manager import SceneManager
 
     urdf = FIXTURES / "abb_irb2400.urdf"
     env = Environment()
@@ -102,10 +104,11 @@ def test_mesh_geometry_loading():
     - Actors have distinct positions (not all at origin)
     """
     import vtk
-    from core.scene_manager import SceneManager
-    from tesseract_robotics.tesseract_environment import Environment
     from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_environment import Environment
     from tesseract_robotics.tesseract_geometry import GeometryType as GT
+
+    from core.scene_manager import SceneManager
 
     urdf = FIXTURES / "abb_irb2400.urdf"
     env = Environment()
@@ -153,7 +156,9 @@ def test_mesh_geometry_loading():
     for c in centers:
         rounded = (round(c[0], 1), round(c[1], 1), round(c[2], 1))
         unique_positions.add(rounded)
-    assert len(unique_positions) >= 5, f"Expected 5+ distinct positions, got {len(unique_positions)}"
+    assert len(unique_positions) >= 5, (
+        f"Expected 5+ distinct positions, got {len(unique_positions)}"
+    )
 
 
 def test_compound_mesh_geometry():
@@ -164,12 +169,13 @@ def test_compound_mesh_geometry():
     - Multiple sub-meshes are combined
     - No crashes on complex mesh structures
     """
-    import vtk
     import tesseract_robotics
-    from core.scene_manager import SceneManager
-    from tesseract_robotics.tesseract_environment import Environment
+    import vtk
     from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_environment import Environment
     from tesseract_robotics.tesseract_geometry import GeometryType as GT
+
+    from core.scene_manager import SceneManager
 
     support_dir = Path(tesseract_robotics.get_tesseract_support_path())
     urdf = support_dir / "urdf" / "lbr_iiwa_14_r820.urdf"
@@ -215,9 +221,10 @@ def test_compound_mesh_geometry():
 def test_scene_manager_update_joints():
     """Test SceneManager updates joint values."""
     import vtk
-    from core.scene_manager import SceneManager
-    from tesseract_robotics.tesseract_environment import Environment
     from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_environment import Environment
+
+    from core.scene_manager import SceneManager
 
     urdf = FIXTURES / "abb_irb2400.urdf"
     env = Environment()
@@ -235,9 +242,10 @@ def test_scene_manager_update_joints():
 def test_scene_manager_remove_link():
     """Test SceneManager remove_link."""
     import vtk
-    from core.scene_manager import SceneManager
-    from tesseract_robotics.tesseract_environment import Environment
     from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_environment import Environment
+
+    from core.scene_manager import SceneManager
 
     urdf = FIXTURES / "abb_irb2400.urdf"
     env = Environment()
@@ -263,12 +271,13 @@ def test_reload_multiple_robots(qapp):
     - Joint sliders match new robot
     """
     import tesseract_robotics
-    from widgets.manipulation_widget import ManipulationWidget
-    from core.scene_manager import SceneManager
-    from tesseract_robotics.tesseract_environment import Environment
-    from tesseract_robotics.tesseract_common import GeneralResourceLocator
-    from tesseract_robotics.tesseract_scene_graph import JointType
     import vtk
+    from tesseract_robotics.tesseract_common import GeneralResourceLocator
+    from tesseract_robotics.tesseract_environment import Environment
+    from tesseract_robotics.tesseract_scene_graph import JointType
+
+    from core.scene_manager import SceneManager
+    from widgets.manipulation_widget import ManipulationWidget
 
     support_dir = Path(tesseract_robotics.get_tesseract_support_path())
     urdf_dir = support_dir / "urdf"
@@ -335,8 +344,9 @@ def test_reload_multiple_robots(qapp):
         if prev_joint_count > 0 and current_count != prev_joint_count:
             # Joint count changed - widget should reflect this
             widget_joints = manip.get_joint_values()
-            assert len(widget_joints) == current_count, \
+            assert len(widget_joints) == current_count, (
                 f"Widget joints {len(widget_joints)} != env joints {current_count}"
+            )
 
         prev_joint_count = current_count
 
@@ -355,18 +365,23 @@ def test_contact_detection_with_joint_values():
     Uses tesseract_support paths because SRDF needs package:// resolution.
     """
     import math
+
     import tesseract_robotics  # Set up plugin paths
-    from tesseract_robotics.tesseract_environment import Environment
-    from tesseract_robotics.tesseract_common import GeneralResourceLocator, CollisionMarginData
     from tesseract_robotics.tesseract_collision import (
-        ContactTestType, ContactRequest, ContactResultMap, ContactResultVector
+        ContactRequest,
+        ContactResultMap,
+        ContactResultVector,
+        ContactTestType,
     )
+    from tesseract_robotics.tesseract_common import CollisionMarginData, GeneralResourceLocator
+    from tesseract_robotics.tesseract_environment import Environment
 
     # Use installed tesseract_support (has proper package:// resolution)
     support_dir = Path(tesseract_robotics.get_tesseract_support_path())
     if not support_dir.exists():
         # Fallback to ws/install for dev mode
         import os
+
         support_dir = Path(os.environ.get("TESSERACT_SUPPORT_DIR", ""))
     urdf = support_dir / "urdf" / "abb_irb2400.urdf"
     srdf = support_dir / "urdf" / "abb_irb2400.srdf"

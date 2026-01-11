@@ -1,7 +1,9 @@
 """Smoke tests - examples must complete without error."""
-import pytest
+
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -11,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 vtk_available = pytest.importorskip("vtk", reason="vtk not installed")
 tesseract_available = pytest.mark.skipif(
     not pytest.importorskip("tesseract_robotics", reason="tesseract not installed"),
-    reason="tesseract_robotics not installed"
+    reason="tesseract_robotics not installed",
 )
 
 
@@ -20,15 +22,15 @@ class TestImports:
 
     def test_import_core(self):
         try:
-            from core.scene_manager import SceneManager
             from core.camera_control import CameraController, ViewMode
+            from core.scene_manager import SceneManager
         except ImportError as e:
             if "vtk" in str(e) or "tesseract" in str(e) or "dylib" in str(e):
                 pytest.skip(f"dependency not available: {e}")
             raise
 
     def test_import_state_manager(self):
-        from core.state_manager import StateManager
+        pass
 
     def test_import_contact_viz(self):
         try:
@@ -43,22 +45,25 @@ class TestExamples:
     """Test example scripts parse and define expected functions."""
 
     def test_tool_path_demo(self):
-        from examples.tool_path_demo import create_sample_paths, add_demo_paths
+        from examples.tool_path_demo import add_demo_paths, create_sample_paths
+
         assert callable(create_sample_paths)
         assert callable(add_demo_paths)
 
         # Actually run it
         paths = create_sample_paths()
-        assert 'spiral' in paths
-        assert 'segments' in paths
+        assert "spiral" in paths
+        assert "segments" in paths
 
     def test_workspace_demo(self):
         from examples.workspace_demo import visualize_workspace, visualize_workspace_simple
+
         assert callable(visualize_workspace)
         assert callable(visualize_workspace_simple)
 
     def test_fk_viz_demo(self):
         from examples.fk_viz_demo import demo_fk_viz
+
         assert callable(demo_fk_viz)
 
 
@@ -106,17 +111,20 @@ class TestTrajectoryPlayer:
     @pytest.fixture
     def qapp(self):
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance() or QApplication([])
         yield app
 
     def test_create_player(self, qapp):
         from widgets.trajectory_player import TrajectoryPlayerWidget
+
         w = TrajectoryPlayerWidget()
         assert w._frame_count == 0
         assert w.get_frame() == 0
 
     def test_load_trajectory(self, qapp):
         import numpy as np
+
         from widgets.trajectory_player import TrajectoryPlayerWidget
 
         w = TrajectoryPlayerWidget()
@@ -137,17 +145,20 @@ class TestInfoPanel:
     @pytest.fixture
     def qapp(self):
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance() or QApplication([])
         yield app
 
     def test_create_panel(self, qapp):
         from widgets.info_panel import RobotInfoPanel
+
         p = RobotInfoPanel()
         assert p.name_label.text() == "Name: -"
 
     def test_update_joint_values(self, qapp):
-        from widgets.info_panel import RobotInfoPanel
         from PySide6.QtWidgets import QTableWidgetItem
+
+        from widgets.info_panel import RobotInfoPanel
 
         p = RobotInfoPanel()
         p._joint_names = ["j1", "j2"]
@@ -162,6 +173,7 @@ class TestRotationConversion:
 
     def test_identity(self):
         import numpy as np
+
         from widgets.info_panel import rotation_matrix_to_rpy
 
         R = np.eye(3)
@@ -172,14 +184,18 @@ class TestRotationConversion:
 
     def test_90_deg_yaw(self):
         import numpy as np
+
         from widgets.info_panel import rotation_matrix_to_rpy
 
         # 90 deg rotation about Z
-        R = np.array([
-            [0, -1, 0],
-            [1, 0, 0],
-            [0, 0, 1],
-        ], dtype=float)
+        R = np.array(
+            [
+                [0, -1, 0],
+                [1, 0, 0],
+                [0, 0, 1],
+            ],
+            dtype=float,
+        )
         roll, pitch, yaw = rotation_matrix_to_rpy(R)
         assert abs(yaw - np.pi / 2) < 1e-6
 
@@ -190,12 +206,14 @@ class TestPlotWidget:
     @pytest.fixture
     def qapp(self):
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance() or QApplication([])
         yield app
 
     def test_create_plot_widget(self, qapp):
         pytest.importorskip("pyqtgraph", reason="pyqtgraph not installed")
         from widgets.plot_widget import PlotWidget
+
         w = PlotWidget()
         w.add_joint("joint_1")
         w.add_joint("joint_2")

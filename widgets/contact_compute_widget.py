@@ -1,23 +1,23 @@
 """Contact results compute widget."""
+
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QFormLayout,
-    QGroupBox,
-    QFrame,
-    QPushButton,
-    QDoubleSpinBox,
-    QComboBox,
     QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QPushButton,
     QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QLabel,
+    QVBoxLayout,
+    QWidget,
 )
 
 
@@ -93,9 +93,9 @@ class ContactComputeWidget(QWidget):
         # Results table
         self.contact_results_widget = QTableWidget()
         self.contact_results_widget.setColumnCount(6)
-        self.contact_results_widget.setHorizontalHeaderLabels([
-            "Link1", "Link2", "Distance", "Point1", "Point2", "Normal"
-        ])
+        self.contact_results_widget.setHorizontalHeaderLabels(
+            ["Link1", "Link2", "Distance", "Point1", "Point2", "Normal"]
+        )
 
         # Configure table headers
         header = self.contact_results_widget.horizontalHeader()
@@ -107,9 +107,7 @@ class ContactComputeWidget(QWidget):
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
 
         self.contact_results_widget.setAlternatingRowColors(True)
-        self.contact_results_widget.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
-        )
+        self.contact_results_widget.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.contact_results_widget.setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding
         )

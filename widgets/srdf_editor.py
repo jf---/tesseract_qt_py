@@ -1,17 +1,18 @@
 """SRDF editor widget."""
+
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QGridLayout,
-    QToolBox,
     QFrame,
+    QGridLayout,
     QLabel,
     QLineEdit,
     QPushButton,
-    QSpacerItem,
     QSizePolicy,
+    QSpacerItem,
+    QToolBox,
+    QVBoxLayout,
+    QWidget,
 )
 
 
@@ -103,7 +104,9 @@ class SRDFEditorWidget(QWidget):
         grid.addWidget(self.load_push_button, 2, 2)
 
         load_layout.addWidget(frame)
-        load_layout.addItem(QSpacerItem(20, 37, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
+        load_layout.addItem(
+            QSpacerItem(20, 37, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        )
 
         # Page 2: ACM
         acm_page = QWidget()
@@ -129,7 +132,9 @@ class SRDFEditorWidget(QWidget):
         states_layout = QVBoxLayout(states_page)
         states_layout.setContentsMargins(3, 3, 3, 3)
         self.group_states_widget = GroupJointStatesEditorWidget()
-        self.group_states_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.group_states_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         states_layout.addWidget(self.group_states_widget)
 
         # Page 5: Save
@@ -155,7 +160,9 @@ class SRDFEditorWidget(QWidget):
         save_layout.addWidget(self.save_srdf_save_button, 5, 2)
 
         # Spacer
-        save_layout.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 6, 2)
+        save_layout.addItem(
+            QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 6, 2
+        )
 
         # Add pages to toolbox
         self.toolbox.addItem(load_page, "Load URDF/SRDF")

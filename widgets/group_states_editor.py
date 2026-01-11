@@ -1,20 +1,21 @@
 """Group states editor widget."""
+
 from __future__ import annotations
 
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
+    QAbstractItemView,
     QComboBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
     QTableWidget,
     QTableWidgetItem,
-    QPushButton,
-    QLabel,
-    QHeaderView,
-    QAbstractItemView,
-    QSpacerItem,
-    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
 
@@ -55,7 +56,9 @@ class GroupStatesEditorWidget(QWidget):
 
         # Buttons
         btn_layout = QHBoxLayout()
-        btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        btn_layout.addItem(
+            QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        )
 
         self.btn_add = QPushButton("Add State")
         self.btn_add.setMinimumWidth(100)

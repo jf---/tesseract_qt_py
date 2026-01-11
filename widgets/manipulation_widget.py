@@ -1,18 +1,19 @@
 """Manipulation widget for robot control."""
+
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QFormLayout,
-    QTabWidget,
-    QLabel,
     QComboBox,
-    QPushButton,
+    QFormLayout,
     QFrame,
-    QSpacerItem,
+    QLabel,
+    QPushButton,
     QSizePolicy,
+    QSpacerItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 try:

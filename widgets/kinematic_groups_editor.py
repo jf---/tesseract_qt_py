@@ -1,22 +1,23 @@
 """Kinematic groups editor widget."""
+
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGridLayout,
+    QAbstractItemView,
+    QComboBox,
     QFrame,
+    QGridLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
-    QTabWidget,
-    QComboBox,
-    QPushButton,
     QListWidget,
-    QAbstractItemView,
-    QSpacerItem,
+    QPushButton,
     QSizePolicy,
+    QSpacerItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 
@@ -43,7 +44,9 @@ class KinematicGroupsEditorWidget(QWidget):
 
     def _on_add_joint(self):
         joint = self.jointComboBox.currentText()
-        if joint and joint not in [self.jointListWidget.item(i).text() for i in range(self.jointListWidget.count())]:
+        if joint and joint not in [
+            self.jointListWidget.item(i).text() for i in range(self.jointListWidget.count())
+        ]:
             self.jointListWidget.addItem(joint)
 
     def _on_remove_joint(self):
@@ -52,7 +55,9 @@ class KinematicGroupsEditorWidget(QWidget):
 
     def _on_add_link(self):
         link = self.linkComboBox.currentText()
-        if link and link not in [self.linkListWidget.item(i).text() for i in range(self.linkListWidget.count())]:
+        if link and link not in [
+            self.linkListWidget.item(i).text() for i in range(self.linkListWidget.count())
+        ]:
             self.linkListWidget.addItem(link)
 
     def _on_remove_link(self):
@@ -68,7 +73,9 @@ class KinematicGroupsEditorWidget(QWidget):
             data = (self.baseLinkNameComboBox.currentText(), self.tipLinkNameComboBox.currentText())
             self.group_added.emit(name, "chain", data)
         elif tab == 1:  # JOINTS
-            joints = [self.jointListWidget.item(i).text() for i in range(self.jointListWidget.count())]
+            joints = [
+                self.jointListWidget.item(i).text() for i in range(self.jointListWidget.count())
+            ]
             self.group_added.emit(name, "joints", joints)
         else:  # LINKS
             links = [self.linkListWidget.item(i).text() for i in range(self.linkListWidget.count())]
@@ -200,7 +207,9 @@ class KinematicGroupsEditorWidget(QWidget):
         bottom_layout = QHBoxLayout(bottom_frame)
         bottom_layout.setContentsMargins(0, 0, 0, 0)
 
-        bottom_spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        bottom_spacer = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
         bottom_layout.addItem(bottom_spacer)
 
         self.addGroupPushButton = QPushButton("Add Group")
@@ -218,5 +227,7 @@ class KinematicGroupsEditorWidget(QWidget):
 
         # Kinematic groups widget (placeholder)
         self.kinGroupsWidget = QWidget()
-        self.kinGroupsWidget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.kinGroupsWidget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         layout.addWidget(self.kinGroupsWidget, 1)

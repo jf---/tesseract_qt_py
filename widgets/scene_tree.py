@@ -1,17 +1,18 @@
 """Scene graph tree widget."""
+
 from __future__ import annotations
 
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QHeaderView,
+    QLineEdit,
+    QMenu,
     QTreeWidget,
     QTreeWidgetItem,
-    QHeaderView,
-    QMenu,
-    QLineEdit,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtGui import QAction
 
 
 class SceneTreeWidget(QWidget):
@@ -68,8 +69,6 @@ class SceneTreeWidget(QWidget):
 
     def _create_link_item(self, link_name: str, scene_graph) -> QTreeWidgetItem:
         """Create tree item for link and its children."""
-        link = scene_graph.getLink(link_name)
-
         item = QTreeWidgetItem()
         item.setText(0, link_name)
         item.setText(1, "Link")
@@ -167,7 +166,9 @@ class SceneTreeWidget(QWidget):
             # Toggle Visibility
             is_visible = item.checkState(0) == Qt.CheckState.Checked
             action_toggle = QAction("Toggle Visibility", self)
-            action_toggle.triggered.connect(lambda: self.linkVisibilityChanged.emit(link_name, not is_visible))
+            action_toggle.triggered.connect(
+                lambda: self.linkVisibilityChanged.emit(link_name, not is_visible)
+            )
             menu.addAction(action_toggle)
 
             # Show Frame
@@ -192,7 +193,9 @@ class SceneTreeWidget(QWidget):
             child = item.child(i)
             data = child.data(0, Qt.ItemDataRole.UserRole)
             if data and data[0] == "link":
-                child.setCheckState(0, Qt.CheckState.Checked if visible else Qt.CheckState.Unchecked)
+                child.setCheckState(
+                    0, Qt.CheckState.Checked if visible else Qt.CheckState.Unchecked
+                )
             self._set_all_visibility(child, visible)
 
     def select_link(self, link_name: str):
