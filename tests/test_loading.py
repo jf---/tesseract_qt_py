@@ -19,7 +19,7 @@ def test_urdf_loads():
     assert env.init(str(urdf), loc), f"Failed to load {urdf}"
 
     sg = env.getSceneGraph()
-    links = [l.getName() for l in sg.getLinks()]
+    links = [lnk.getName() for lnk in sg.getLinks()]
     joints = [j.getName() for j in sg.getJoints()]
 
     assert "base_link" in links

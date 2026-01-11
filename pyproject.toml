@@ -42,7 +42,11 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
-ignore = ["E402"]  # import order is intentional (VTK/Qt setup)
+ignore = ["E402", "E501"]  # import order intentional, line length flexible
+
+[tool.ruff.lint.per-file-ignores]
+"tests/test_examples.py" = ["F401"]  # import tests
+"scripts/diagnose_*.py" = ["F401"]  # diagnostic scripts
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

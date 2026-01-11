@@ -92,11 +92,10 @@ class CartesianEditorWidget(QWidget):
         # Axis names for tooltips
         axis_names = {
             "X": "X position",
-            "Y": "Y position",
+            "Y": "Y position / Yaw (rotation about Z)",
             "Z": "Z position",
             "R": "Roll (rotation about X)",
             "P": "Pitch (rotation about Y)",
-            "Y": "Yaw (rotation about Z)",
         }
         unit = "m" if label in ("X", "Y", "Z") else "deg"
         tooltip = f"{axis_names.get(label, label)}\nRange: [{min_val:.1f}, {max_val:.1f}] {unit}"

@@ -264,6 +264,19 @@ All modules use loguru. Converted from print():
 ### Known Issues
 - Qt dock objectName warnings (cosmetic, affects state restore)
 - Fix: `dock.setObjectName("dock_name")` for each QDockWidget in app.py
+- URDF reload crash when switching between different robots (ABB → IIWA7)
+
+## CRITICAL: URDF/SRDF Are Always Paired
+
+**NEVER delete or separate URDF from its SRDF.** They are a matched pair:
+- URDF defines geometry and kinematics
+- SRDF defines semantic info (groups, ACM, states, plugin configs)
+
+When copying robot files to fixtures, copy ALL related files:
+- `robot.urdf`
+- `robot.srdf`
+- Any referenced config YAMLs (check SRDF for `<kinematics_plugin_config>`)
+- Mesh files if using `package://` paths
 
 ### Test Coverage
 108 tests passing, 5 skipped. Gaps: CameraController, PlanningHelper, ContactVisualizer
