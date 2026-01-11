@@ -72,7 +72,7 @@ scripts = ["scripts/activate_tesseract.sh"]
 
 [tool.pixi.tasks]
 test = "python -m pytest tests -x -q -n auto"
-app = "python app.py"
+app = { cmd = "python app.py", description = "Launch viewer" }
 check = "python -c \"import tesseract_robotics; import vtk; import PySide6; print('all deps OK')\""
 lint = "ruff check ."
 fmt = "ruff format ."
