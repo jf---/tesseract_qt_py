@@ -512,7 +512,7 @@ packages:
 - pypi: ./
   name: tesseract-qt-py
   version: 0.1.0
-  sha256: 9afac87336b5adfd8df70dba662e6f3246811ea55da2a9941150c8a84d81293d
+  sha256: f281c86f1839d0a13a0065dc463847c33d8ae88128980d2ee17eb8e467f88871
   requires_dist:
   - numpy>=1.21
   - pyqtgraph>=0.13

@@ -1425,15 +1425,37 @@ def main():
         # Auto-load ABB robot from tesseract_support
         try:
             from pathlib import Path
+            import sys
             import tesseract_robotics
 
             logger.info("No URDF specified, loading default ABB IRB2400")
+            urdf = None
+            # Try reported path first
             support_dir = Path(tesseract_robotics.get_tesseract_support_path())
-            urdf = support_dir / "urdf" / "abb_irb2400.urdf"
-            srdf = support_dir / "urdf" / "abb_irb2400.srdf"
-            if urdf.exists():
+            candidate = support_dir / "urdf" / "abb_irb2400.urdf"
+            if candidate.exists():
+                urdf = candidate
+            else:
+                # Editable install: search site-packages for installed data
+                for p in sys.path:
+                    candidate = (
+                        Path(p)
+                        / "tesseract_robotics"
+                        / "data"
+                        / "tesseract_support"
+                        / "urdf"
+                        / "abb_irb2400.urdf"
+                    )
+                    if candidate.exists():
+                        urdf = candidate
+                        support_dir = candidate.parent.parent
+                        break
+            if urdf and urdf.exists():
+                srdf = support_dir / "urdf" / "abb_irb2400.srdf"
                 v.load(str(urdf), str(srdf) if srdf.exists() else None)
                 v.render.vtk_widget.GetRenderWindow().Render()
+            else:
+                logger.warning("Default ABB URDF not found in any site-packages")
         except Exception as e:
             logger.warning(f"Could not auto-load ABB robot: {e}")
 
