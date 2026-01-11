@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "post-tool-call": [
+      {
+        "matcher": "Edit|Write",
+        "command": "pixi run -- ruff check --fix --quiet $CLAUDE_FILE_PATHS && pixi run -- ruff format --quiet $CLAUDE_FILE_PATHS"
+      }
+    ]
+  }
+}
