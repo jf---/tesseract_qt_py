@@ -94,18 +94,40 @@ tesseract_qt_py/
 ## Run
 
 ```bash
-conda activate tesseract_nb
-cd ~/Code/CADCAM/tesseract_qt_py
-python app.py /path/to/robot.urdf [/path/to/robot.srdf]
+# Preferred: use pixi (overlays tesseract_nb conda env)
+pixi run app /path/to/robot.urdf [/path/to/robot.srdf]
+
+# Or directly
+./run_app.sh /path/to/robot.urdf
 ```
 
 ## Testing
 
-**CRITICAL: ALWAYS run tests in parallel with xdist:**
 ```bash
-pytest tests/ -n auto -v --tb=short
+pixi run test  # parallel with xdist
 ```
-Never run `pytest` without `-n auto` - parallel execution is mandatory for acceptable performance.
+
+## Pixi Tasks
+
+- `pixi run test` - parallel tests
+- `pixi run app` - launch viewer
+- `pixi run check` - verify deps
+- `pixi run lint` / `pixi run fmt` - ruff
+
+## CRITICAL: tesseract 0.33+ URDF Requirements
+
+URDFs must have `tesseract:make_convex` attribute on `<robot>` element:
+```xml
+<robot name="my_robot"
+       xmlns:tesseract="http://www.tesseract.com"
+       tesseract:make_convex="true">
+```
+- `true` = auto-convert collision meshes to convex hulls (old default)
+- `false` = use original mesh geometry (slower but more accurate)
+
+## Editable Install Path Gotcha
+
+When `tesseract_robotics` is installed in editable mode, `get_tesseract_support_path()` returns the source directory which may lack data files. The app searches `sys.path` for the installed package location as fallback.
 
 ## Keyboard Shortcuts
 
@@ -220,14 +242,18 @@ sample_workspace(joint_names, joint_limits, n_samples)
 show_workspace(points, scalars)
 ```
 
-## Development Status (v0.1 - branch jf/v01)
+## Development Status (branch jf/update_tesseract_033)
+
+### tesseract 0.33 Update
+- Added `tesseract:make_convex` to test fixture URDF
+- Pixi environment overlaying tesseract_nb conda env
+- Robust default URDF path resolution for editable installs
 
 ### Recent Additions
-- `widgets/log_widget.py` - loguru log viewer with color-coding, level filter, auto-scroll
+- `widgets/log_widget.py` - loguru log viewer with color-coding, level filter, auto-scroll, `loguru_sink()` method
 - Window state persistence (geometry, dock positions via QSettings)
 - closeEvent cleanup (stops timers, saves state)
 - Tooltips on cartesian_editor, manipulation_widget
-- Simplified `run_app.sh` using conda env paths
 
 ### Logging
 All modules use loguru. Converted from print():
@@ -240,4 +266,4 @@ All modules use loguru. Converted from print():
 - Fix: `dock.setObjectName("dock_name")` for each QDockWidget in app.py
 
 ### Test Coverage
-113 tests passing. Gaps: CameraController, PlanningHelper, ContactVisualizer
+108 tests passing, 5 skipped. Gaps: CameraController, PlanningHelper, ContactVisualizer
