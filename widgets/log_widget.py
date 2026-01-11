@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections import deque
 
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import Qt, Slot, Signal, QObject
 from PySide6.QtGui import QTextCharFormat, QColor, QFont
 from PySide6.QtWidgets import (
     QWidget,
@@ -142,3 +142,16 @@ class LogWidget(QWidget):
         if self.auto_scroll_cb.isChecked():
             scrollbar = self.log_output.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
+
+    def loguru_sink(self, message):
+        """Loguru sink function for receiving log messages.
+
+        Usage:
+            from loguru import logger
+            logger.add(log_widget.loguru_sink, format="{time:HH:mm:ss} | {level: <8} | {message}")
+        """
+        record = message.record
+        level = record["level"].name
+        # Extract the formatted message string
+        text = str(message).rstrip()
+        self.append_log(text, level)
