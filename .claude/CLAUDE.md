@@ -156,6 +156,33 @@ Use absolute imports (not relative):
 from core.scene_manager import SceneManager  # not ..core
 ```
 
+## CRITICAL: Separate UI from Logic
+
+**NEVER mix UI code (dialogs, progress bars, message boxes) into business logic methods.**
+
+Pattern: pure logic method + UI wrapper:
+```python
+def load(self, urdf, srdf=None):
+    """Pure loading logic - no Qt dialogs."""
+    logger.info("Loading...")
+    # ... business logic that raises on failure ...
+
+def _load_with_progress(self, urdf, srdf=None):
+    """UI wrapper with progress dialog."""
+    progress = QProgressDialog(...)
+    try:
+        self.load(urdf, srdf)
+    except Exception as e:
+        QMessageBox.critical(self, "Error", str(e))
+    finally:
+        progress.close()
+```
+
+Benefits:
+- Logic methods are testable without Qt event loop
+- Logic can be called programmatically without UI overhead
+- UI is isolated and easy to modify/replace
+
 ## Features
 
 ### Visualization
