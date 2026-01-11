@@ -278,10 +278,8 @@ C++ warnings appear as `Warning:` or `Error:` in stderr. Enable TRACE/DEBUG to s
 
 ### Known Issues
 
-- Qt dock objectName warnings (cosmetic, affects state restore)
-  - Fix: `dock.setObjectName("dock_name")` for each QDockWidget in app.py
+- ~~Qt dock objectName warnings~~ **FIXED** - added setObjectName to all docks
 - ~~URDF reload crash when switching between different robots~~ **FIXED**
-  - Was: `fkik_widget.set_environment()` called `setState()` with stale joint names
   - Fix: Removed premature `_update_ik_from_fk()` call
 
 ## CRITICAL: URDF/SRDF Are Always Paired
