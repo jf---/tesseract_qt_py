@@ -374,10 +374,28 @@ class TesseractViewer(QMainWindow):
         self._setup_shortcuts()
 
     def load(self, urdf: str | Path, srdf: str | Path = None):
-        """Load robot from URDF."""
+        """Load robot from URDF with progress dialog."""
+        from PySide6.QtWidgets import QProgressDialog
+
+        urdf_path = Path(urdf)
+
+        # Progress dialog that updates from loguru messages
+        progress = QProgressDialog(f"Loading {urdf_path.name}...", None, 0, 0, self)
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setMinimumWidth(400)
+        progress.setRange(0, 0)  # Indeterminate until we start
+        progress.show()
+
+        def progress_sink(message):
+            text = message.record["message"]
+            progress.setLabelText(text)
+            QApplication.processEvents()
+
+        sink_id = logger.add(progress_sink, level="INFO", format="{message}")
+
         try:
-            logger.info(f"Loading URDF: {urdf}")
-            urdf_path = Path(urdf)
+            logger.info(f"Loading {urdf_path.name}")
 
             # Auto-detect SRDF if not provided
             if not srdf:
@@ -390,51 +408,56 @@ class TesseractViewer(QMainWindow):
             self._env = Environment()
             loc = GeneralResourceLocator()
 
+            logger.info("Initializing tesseract environment")
             if srdf:
-                logger.info(f"Loading with SRDF: {srdf}")
                 if not self._env.init(str(urdf), str(srdf), loc):
                     raise RuntimeError("Failed to init environment with SRDF")
             else:
-                logger.info("Loading URDF only (no SRDF)")
                 if not self._env.init(str(urdf), loc):
                     raise RuntimeError("Failed to init environment from URDF")
 
-            logger.info("Environment initialized, loading into render widget")
+            logger.info("Loading VTK scene")
             self.render.load_environment(self._env)
-            logger.info("Render loaded, setting up tree")
+
+            logger.info("Building scene tree")
             self.tree.load_environment(self._env)
-            logger.info("Tree loaded, setting up manipulation widget")
+
+            logger.info("Setting up manipulation widget")
             self.manip_widget.set_environment(self._env)
-            logger.info("Setting up joints")
+
+            logger.info("Configuring joints")
             self._setup_joints()
-            logger.info("Joints setup, loading info panel")
+
+            logger.info("Loading robot info panel")
             self.info_panel.load_environment(self._env)
-            logger.info("Info panel loaded, detecting TCP link")
+
+            logger.info("Detecting TCP link")
             tcp_link = self._detect_tcp_link()
             if tcp_link:
                 self.info_panel.set_tcp_link(tcp_link)
-                logger.info(f"TCP link set to: {tcp_link}")
-            logger.info("Setting up IK widget")
+
+            logger.info("Setting up IK solver")
             self.ik_widget.set_environment(self._env)
             self.ik_widget.set_scene_manager(self.render.scene)
 
-            # Populate P2 widgets
+            logger.info("Loading advanced widgets")
             self._populate_p2_widgets()
-
-            # Load ACM from environment if SRDF loaded
             if srdf:
                 self._load_acm_from_env()
 
+            logger.info("Finalizing")
             self.statusBar().showMessage(f"Loaded: {urdf}")
             self._add_recent(str(Path(urdf).resolve()))
-            logger.success(f"Successfully loaded: {urdf}")
-
-            # Update TCP pose in status bar
             self._update_tcp_status({})
+
+            logger.success(f"Loaded: {urdf_path.name}")
 
         except Exception as e:
             logger.exception(f"Failed to load: {e}")
             QMessageBox.critical(self, "Error", str(e))
+        finally:
+            logger.remove(sink_id)
+            progress.close()
 
     def _setup_joints(self):
         sg = self._env.getSceneGraph()
