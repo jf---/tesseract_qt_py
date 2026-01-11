@@ -1425,7 +1425,6 @@ def main():
         # Auto-load ABB robot from tesseract_support
         try:
             from pathlib import Path
-            import sys
             import tesseract_robotics
 
             logger.info("No URDF specified, loading default ABB IRB2400")
