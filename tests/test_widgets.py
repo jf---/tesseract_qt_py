@@ -82,8 +82,8 @@ def test_scene_tree_signals(qapp):
 
 def test_all_docks_in_view_menu():
     """Test all dock widgets are accessible via View menu."""
-    from pathlib import Path
     import re
+    from pathlib import Path
 
     app_py = Path(__file__).parent.parent / "app.py"
     content = app_py.read_text()
@@ -100,8 +100,8 @@ def test_all_docks_in_view_menu():
 
 def test_window_size_reasonable():
     """Test app.py configures reasonable window size."""
-    from pathlib import Path
     import re
+    from pathlib import Path
 
     app_py = Path(__file__).parent.parent / "app.py"
     content = app_py.read_text()
@@ -144,8 +144,9 @@ class TestCartesianEditor:
 
     def test_set_pose(self, qapp):
         """Test setting pose values."""
-        from widgets.cartesian_editor import CartesianEditorWidget
         from math import radians
+
+        from widgets.cartesian_editor import CartesianEditorWidget
 
         widget = CartesianEditorWidget()
         widget.set_pose(1.0, 0.5, 0.8, radians(45), radians(30), radians(-90))
@@ -202,8 +203,9 @@ class TestCartesianEditor:
 
     def test_get_rpy_radians(self, qapp):
         """Test get_rpy_radians returns orientation in radians."""
+        from math import radians
+
         from widgets.cartesian_editor import CartesianEditorWidget
-        from math import radians, pi
 
         widget = CartesianEditorWidget()
         widget.set_pose(0, 0, 0, radians(90), radians(45), radians(-45))
@@ -232,12 +234,14 @@ class TestFKIKWidget:
     def test_ik_solve_moves_vtk_actors(self, qapp):
         """Test IK solve updates VTK actor positions."""
         from pathlib import Path
-        from widgets.fkik_widget import FKIKWidget
-        from core.scene_manager import SceneManager
+
         import tesseract_robotics
-        from tesseract_robotics.tesseract_environment import Environment
-        from tesseract_robotics.tesseract_common import GeneralResourceLocator
         import vtk
+        from tesseract_robotics.tesseract_common import GeneralResourceLocator
+        from tesseract_robotics.tesseract_environment import Environment
+
+        from core.scene_manager import SceneManager
+        from widgets.fkik_widget import FKIKWidget
 
         # Load robot with SRDF for kinematic group
         support_dir = Path(tesseract_robotics.get_tesseract_support_path())
@@ -299,10 +303,12 @@ class TestFKIKWidget:
     def test_fk_updates_ik_display(self, qapp):
         """Test FK slider changes update IK Cartesian display."""
         from pathlib import Path
-        from widgets.fkik_widget import FKIKWidget
+
         import tesseract_robotics
-        from tesseract_robotics.tesseract_environment import Environment
         from tesseract_robotics.tesseract_common import GeneralResourceLocator
+        from tesseract_robotics.tesseract_environment import Environment
+
+        from widgets.fkik_widget import FKIKWidget
 
         # Load robot with SRDF for kinematic group
         support_dir = Path(tesseract_robotics.get_tesseract_support_path())
@@ -344,10 +350,12 @@ class TestFKIKWidget:
     def test_ik_solve_updates_fk(self, qapp):
         """Test IK solve updates FK sliders."""
         from pathlib import Path
-        from widgets.fkik_widget import FKIKWidget
+
         import tesseract_robotics
-        from tesseract_robotics.tesseract_environment import Environment
         from tesseract_robotics.tesseract_common import GeneralResourceLocator
+        from tesseract_robotics.tesseract_environment import Environment
+
+        from widgets.fkik_widget import FKIKWidget
 
         # Load robot with SRDF for kinematic group
         support_dir = Path(tesseract_robotics.get_tesseract_support_path())

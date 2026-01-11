@@ -6,15 +6,15 @@ from pathlib import Path
 
 from PySide6.QtCore import QSettings, QStandardPaths
 from PySide6.QtWidgets import (
-    QWidget,
     QDialog,
+    QDialogButtonBox,
+    QFileDialog,
     QGridLayout,
-    QVBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
-    QFileDialog,
-    QDialogButtonBox,
+    QVBoxLayout,
+    QWidget,
 )
 
 

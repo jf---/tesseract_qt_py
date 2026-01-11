@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Example demonstrating motion planning with high-level API."""
 
-from pathlib import Path
 import sys
+from pathlib import Path
+
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tesseract_robotics.planning import Robot, Pose, TaskComposer
+from tesseract_robotics.planning import Robot, TaskComposer
+
 from core.planning import PlanningHelper
 
 

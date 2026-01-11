@@ -6,13 +6,13 @@ import numpy as np
 from loguru import logger
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QGroupBox,
-    QTableWidget,
-    QTableWidgetItem,
     QHeaderView,
     QLabel,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
 

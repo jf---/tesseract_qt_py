@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Signal, Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QDoubleSpinBox,
     QHBoxLayout,
-    QSlider,
     QLabel,
     QPushButton,
-    QDoubleSpinBox,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
 )
 
 

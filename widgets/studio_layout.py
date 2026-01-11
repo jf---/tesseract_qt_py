@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QMainWindow, QWidget, QToolBar, QMenuBar, QStatusBar
 from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtWidgets import QMainWindow, QStatusBar, QToolBar, QWidget
 
 
 class StudioMainWindow(QMainWindow):

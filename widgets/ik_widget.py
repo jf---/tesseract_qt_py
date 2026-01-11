@@ -4,20 +4,18 @@ from __future__ import annotations
 
 import numpy as np
 from loguru import logger
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QFormLayout,
     QComboBox,
     QDoubleSpinBox,
-    QPushButton,
-    QLabel,
+    QFormLayout,
     QGroupBox,
-    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-
 from tesseract_robotics.tesseract_kinematics import KinGroupIKInput
 
 from widgets.info_panel import rotation_matrix_to_rpy
@@ -190,8 +188,8 @@ class IKWidget(QWidget):
             yaw = self.yaw_spin.value()
 
             # Convert RPY to transform
-            from scipy.spatial.transform import Rotation
             import tesseract_robotics.tesseract_common as tc
+            from scipy.spatial.transform import Rotation
 
             rot = Rotation.from_euler("xyz", [roll, pitch, yaw])
 
@@ -279,9 +277,9 @@ class IKWidget(QWidget):
 
     def _solve_ik_numerical(self):
         """Solve IK numerically using scipy optimization."""
+        import tesseract_robotics.tesseract_common as tc
         from scipy.optimize import minimize
         from scipy.spatial.transform import Rotation
-        import tesseract_robotics.tesseract_common as tc
 
         try:
             # Get target pose from UI
@@ -400,8 +398,8 @@ class IKWidget(QWidget):
             yaw = self.yaw_spin.value()
 
             # Convert RPY to transform
-            from scipy.spatial.transform import Rotation
             import tesseract_robotics.tesseract_common as tc
+            from scipy.spatial.transform import Rotation
 
             rot = Rotation.from_euler("xyz", [roll, pitch, yaw])
 

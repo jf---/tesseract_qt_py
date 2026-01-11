@@ -2,23 +2,22 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QFormLayout,
-    QGroupBox,
-    QFrame,
-    QPushButton,
-    QDoubleSpinBox,
-    QComboBox,
     QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QPushButton,
     QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QLabel,
+    QVBoxLayout,
+    QWidget,
 )
 
 

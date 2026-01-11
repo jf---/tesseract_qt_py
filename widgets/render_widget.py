@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import vtk
-from PySide6.QtCore import Signal, Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QToolBar, QMenu
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QMenu, QToolBar, QVBoxLayout, QWidget
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
-from core.scene_manager import SceneManager
 from core.camera_control import CameraController, ViewMode
+from core.scene_manager import SceneManager
 
 
 class RenderWidget(QWidget):

@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QGridLayout,
-    QToolBox,
     QFrame,
+    QGridLayout,
     QLabel,
     QLineEdit,
     QPushButton,
-    QSpacerItem,
     QSizePolicy,
+    QSpacerItem,
+    QToolBox,
+    QVBoxLayout,
+    QWidget,
 )
 
 

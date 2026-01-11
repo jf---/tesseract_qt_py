@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 # CRITICAL: macOS VTK+Qt setup - NO X11
 if sys.platform == "darwin":
@@ -30,50 +30,46 @@ sys.excepthook = _excepthook
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSettings
+from PySide6.QtCore import QSettings, Qt
+from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
-    QMainWindow,
     QDockWidget,
     QFileDialog,
-    QMessageBox,
-    QStatusBar,
     QInputDialog,
     QLabel,
+    QMainWindow,
+    QMessageBox,
+    QStatusBar,
 )
-from PySide6.QtGui import QAction, QKeySequence, QShortcut
-
-from tesseract_robotics.tesseract_environment import Environment
-from tesseract_robotics.tesseract_common import (
-    GeneralResourceLocator,
-    FilesystemPath,
-    CollisionMarginData,
-)
-from tesseract_robotics.tesseract_scene_graph import JointType
 from tesseract_robotics.tesseract_collision import (
     ContactRequest,
     ContactResultMap,
     ContactResultVector,
     ContactTestType,
-    ContactManagersPluginFactory,
 )
-from tesseract_robotics.tesseract_common import _FilesystemPath
+from tesseract_robotics.tesseract_common import (
+    CollisionMarginData,
+    GeneralResourceLocator,
+)
+from tesseract_robotics.tesseract_environment import Environment
+from tesseract_robotics.tesseract_scene_graph import JointType
 
-from widgets.render_widget import RenderWidget
-from widgets.scene_tree import SceneTreeWidget
+from core.state_manager import StateManager
+from widgets.acm_editor import ACMEditorWidget
+from widgets.contact_compute_widget import ContactComputeWidget
+from widgets.group_states_editor import GroupStatesEditorWidget
 from widgets.ik_widget import IKWidget
 from widgets.info_panel import RobotInfoPanel
-from widgets.trajectory_player import TrajectoryPlayerWidget
-from widgets.contact_compute_widget import ContactComputeWidget
-from widgets.plot_widget import PlotWidget
-from widgets.acm_editor import ACMEditorWidget
 from widgets.kinematic_groups_editor import KinematicGroupsEditorWidget
-from widgets.manipulation_widget import ManipulationWidget
-from widgets.group_states_editor import GroupStatesEditorWidget
-from widgets.tcp_editor import TCPEditorWidget
-from widgets.task_composer_widget import TaskComposerWidget
 from widgets.log_widget import LogWidget
-from core.state_manager import StateManager
+from widgets.manipulation_widget import ManipulationWidget
+from widgets.plot_widget import PlotWidget
+from widgets.render_widget import RenderWidget
+from widgets.scene_tree import SceneTreeWidget
+from widgets.task_composer_widget import TaskComposerWidget
+from widgets.tcp_editor import TCPEditorWidget
+from widgets.trajectory_player import TrajectoryPlayerWidget
 
 
 class TesseractViewer(QMainWindow):
@@ -118,9 +114,9 @@ class TesseractViewer(QMainWindow):
 
     def _setup_status_logging(self):
         """Setup loguru to also show messages in status bar with copy context menu."""
-        from PySide6.QtWidgets import QStatusBar, QApplication, QLabel
-        from PySide6.QtGui import QAction
         from PySide6.QtCore import Qt
+        from PySide6.QtGui import QAction
+        from PySide6.QtWidgets import QApplication
 
         # Create custom status bar with context menu
         status_bar = QStatusBar()
@@ -763,7 +759,7 @@ class TesseractViewer(QMainWindow):
             result_map.flattenMoveResults(results)
 
             if len(results) == 0:
-                logger.success(f"No collisions detected")
+                logger.success("No collisions detected")
             else:
                 logger.warning(f"Found {len(results)} collision(s)")
             for i, contact in enumerate(results):
@@ -996,10 +992,10 @@ class TesseractViewer(QMainWindow):
 
         try:
             from tesseract_robotics.planning import (
-                Robot,
-                MotionProgram,
                 CartesianTarget,
+                MotionProgram,
                 Pose,
+                Robot,
                 TaskComposer,
             )
 
@@ -1025,13 +1021,11 @@ class TesseractViewer(QMainWindow):
 
             # Get joint state
             joint_names = robot.get_joint_names("manipulator")
-            joint_vals = [state.joints.get(j, 0.0) for j in joint_names]
 
             self.task_composer_widget.log(f"TCP: {tcp_link}")
             self.task_composer_widget.log(f"Joints: {len(joint_names)}")
 
             # Create a simple motion: current -> offset -> current
-            import numpy as np
 
             trans = current_tf.translation()
             # Small Z offset for demo motion
@@ -1298,9 +1292,7 @@ class TesseractViewer(QMainWindow):
     def _populate_task_composer(self):
         """Populate task composer widget with available pipelines."""
         try:
-            from tesseract_robotics.planning import TaskComposer
-
-            composer = TaskComposer.from_config()
+            from tesseract_robotics.planning import TaskComposer  # noqa: F401
 
             # Get available pipelines/tasks
             pipelines = [
@@ -1425,6 +1417,7 @@ def main():
         # Auto-load ABB robot from tesseract_support
         try:
             from pathlib import Path
+
             import tesseract_robotics
 
             logger.info("No URDF specified, loading default ABB IRB2400")

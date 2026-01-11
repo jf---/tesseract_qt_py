@@ -5,8 +5,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
-import vtk
-from PySide6.QtCore import Qt, QPoint
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent, QWheelEvent
 
 if TYPE_CHECKING:

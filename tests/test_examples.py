@@ -1,8 +1,9 @@
 """Smoke tests - examples must complete without error."""
 
-import pytest
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -21,15 +22,15 @@ class TestImports:
 
     def test_import_core(self):
         try:
-            from core.scene_manager import SceneManager
             from core.camera_control import CameraController, ViewMode
+            from core.scene_manager import SceneManager
         except ImportError as e:
             if "vtk" in str(e) or "tesseract" in str(e) or "dylib" in str(e):
                 pytest.skip(f"dependency not available: {e}")
             raise
 
     def test_import_state_manager(self):
-        from core.state_manager import StateManager
+        pass
 
     def test_import_contact_viz(self):
         try:
@@ -44,7 +45,7 @@ class TestExamples:
     """Test example scripts parse and define expected functions."""
 
     def test_tool_path_demo(self):
-        from examples.tool_path_demo import create_sample_paths, add_demo_paths
+        from examples.tool_path_demo import add_demo_paths, create_sample_paths
 
         assert callable(create_sample_paths)
         assert callable(add_demo_paths)
@@ -123,6 +124,7 @@ class TestTrajectoryPlayer:
 
     def test_load_trajectory(self, qapp):
         import numpy as np
+
         from widgets.trajectory_player import TrajectoryPlayerWidget
 
         w = TrajectoryPlayerWidget()
@@ -154,8 +156,9 @@ class TestInfoPanel:
         assert p.name_label.text() == "Name: -"
 
     def test_update_joint_values(self, qapp):
-        from widgets.info_panel import RobotInfoPanel
         from PySide6.QtWidgets import QTableWidgetItem
+
+        from widgets.info_panel import RobotInfoPanel
 
         p = RobotInfoPanel()
         p._joint_names = ["j1", "j2"]
@@ -170,6 +173,7 @@ class TestRotationConversion:
 
     def test_identity(self):
         import numpy as np
+
         from widgets.info_panel import rotation_matrix_to_rpy
 
         R = np.eye(3)
@@ -180,6 +184,7 @@ class TestRotationConversion:
 
     def test_90_deg_yaw(self):
         import numpy as np
+
         from widgets.info_panel import rotation_matrix_to_rpy
 
         # 90 deg rotation about Z

@@ -109,11 +109,11 @@ def test_factory_creation(config_path: Path):
     from tesseract_robotics.tesseract_common import GeneralResourceLocator
 
     loc = GeneralResourceLocator()
-    print(f"✓ Created GeneralResourceLocator")
+    print("✓ Created GeneralResourceLocator")
 
     try:
         factory = tc.createTaskComposerPluginFactory(str(config_path), loc)
-        print(f"✓ Created TaskComposerPluginFactory")
+        print("✓ Created TaskComposerPluginFactory")
         return factory
     except Exception as e:
         print(f"✗ Failed to create factory: {e}")
@@ -145,7 +145,7 @@ def test_executor_creation(factory):
     print("\nTrying direct TaskflowTaskComposerExecutor creation:")
     try:
         executor = tc.TaskflowTaskComposerExecutor("test_executor", 4)
-        print(f"  ✓ Created TaskflowTaskComposerExecutor directly")
+        print("  ✓ Created TaskflowTaskComposerExecutor directly")
         return executor
     except Exception as e:
         print(f"  ✗ Exception: {e}")

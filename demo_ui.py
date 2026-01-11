@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Demo UI without tesseract - just shows widgets with VTK primitives."""
 
-import sys
 import os
+import sys
 
 # Force native Cocoa on macOS - NO X11
 if sys.platform == "darwin":
@@ -15,34 +15,30 @@ import vtkmodules.qt
 vtkmodules.qt.QVTKRWIBase = "QOpenGLWidget"
 
 import numpy as np
-from PySide6.QtWidgets import QApplication, QDockWidget
+import vtkmodules.vtkRenderingOpenGL2  # noqa: F401
 from PySide6.QtCore import Qt
-
+from PySide6.QtWidgets import QApplication, QDockWidget
+from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtkmodules.vtkFiltersSources import (
-    vtkCubeSource,
-    vtkSphereSource,
-    vtkCylinderSource,
     vtkConeSource,
-    vtkLineSource,
+    vtkCubeSource,
+    vtkCylinderSource,
+    vtkSphereSource,
 )
+from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera
+from vtkmodules.vtkRenderingAnnotation import vtkAxesActor
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
     vtkPolyDataMapper,
     vtkRenderer,
-    vtkRenderWindow,
 )
-from vtkmodules.vtkRenderingAnnotation import vtkAxesActor
-from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera
-from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-import vtkmodules.vtkRenderingOpenGL2  # noqa: F401
 
-from widgets.studio_layout import StudioMainWindow
 from widgets.acm_editor import ACMEditorWidget
-from widgets.srdf_editor import SRDFEditorWidget
 from widgets.cartesian_editor import CartesianEditorWidget
 from widgets.contact_compute_widget import ContactComputeWidget
-from widgets.manipulation_widget import ManipulationWidget
 from widgets.environment_dialog import LoadEnvironmentDialog
+from widgets.manipulation_widget import ManipulationWidget
+from widgets.studio_layout import StudioMainWindow
 
 
 def create_actor(source, color, position=(0, 0, 0)):
@@ -58,8 +54,8 @@ def create_actor(source, color, position=(0, 0, 0)):
 
 def create_ground_grid(size=2.0, spacing=0.2, color=(0.4, 0.4, 0.4)):
     """Create a ground grid on XY plane at z=0."""
-    from vtkmodules.vtkCommonDataModel import vtkPolyData, vtkCellArray
     from vtkmodules.vtkCommonCore import vtkPoints
+    from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 
     points = vtkPoints()
     lines = vtkCellArray()

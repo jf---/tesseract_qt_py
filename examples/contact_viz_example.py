@@ -5,7 +5,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import numpy as np
 from tesseract_robotics.tesseract_collision import (
     ContactRequest,
     ContactResultMap,

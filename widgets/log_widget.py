@@ -4,19 +4,18 @@ from __future__ import annotations
 
 from collections import deque
 
-from PySide6.QtCore import Qt, Slot, Signal, QObject
-from PySide6.QtGui import QTextCharFormat, QColor, QFont
+from PySide6.QtCore import Slot
+from PySide6.QtGui import QColor, QFont, QTextCharFormat
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPlainTextEdit,
-    QPushButton,
     QCheckBox,
     QComboBox,
+    QHBoxLayout,
     QLabel,
+    QPlainTextEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-
 
 # Log levels in order (lowest to highest)
 LOG_LEVELS = ["DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]

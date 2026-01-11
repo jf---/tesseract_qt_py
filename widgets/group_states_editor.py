@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
+    QAbstractItemView,
     QComboBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
     QTableWidget,
     QTableWidgetItem,
-    QPushButton,
-    QLabel,
-    QHeaderView,
-    QAbstractItemView,
-    QSpacerItem,
-    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
 

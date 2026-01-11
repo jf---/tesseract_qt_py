@@ -8,6 +8,7 @@ os.environ["QT_QPA_PLATFORM"] = "cocoa"
 
 import sys
 from pathlib import Path
+
 import pytest
 
 # add project root to path

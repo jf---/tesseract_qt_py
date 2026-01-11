@@ -1,6 +1,5 @@
 """FK visualization demo."""
 
-from pathlib import Path
 
 # Example usage of FK visualization methods
 

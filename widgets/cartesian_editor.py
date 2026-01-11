@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-from math import pi, degrees, radians
+from math import degrees, radians
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QDoubleSpinBox,
     QGridLayout,
     QGroupBox,
     QLabel,
-    QDoubleSpinBox,
-    QSlider,
     QSizePolicy,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt
 
 
 class CartesianEditorWidget(QWidget):

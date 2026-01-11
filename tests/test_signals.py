@@ -1,8 +1,9 @@
 """signal tests for P1 widgets - test signal emission and payload data."""
 
-import pytest
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -353,9 +354,10 @@ class TestSceneTreeSignals:
 
     def test_link_selected_signal(self, qapp):
         """test linkSelected signal emitted when tree item selected."""
-        from widgets.scene_tree import SceneTreeWidget
-        from PySide6.QtWidgets import QTreeWidgetItem
         from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from widgets.scene_tree import SceneTreeWidget
 
         w = SceneTreeWidget()
 
@@ -374,9 +376,10 @@ class TestSceneTreeSignals:
 
     def test_link_visibility_changed_signal(self, qapp):
         """test linkVisibilityChanged signal emitted when checkbox toggled."""
-        from widgets.scene_tree import SceneTreeWidget
-        from PySide6.QtWidgets import QTreeWidgetItem
         from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from widgets.scene_tree import SceneTreeWidget
 
         w = SceneTreeWidget()
 
@@ -399,9 +402,10 @@ class TestSceneTreeSignals:
 
     def test_link_visibility_changed_to_visible(self, qapp):
         """test linkVisibilityChanged signal with visible=True."""
-        from widgets.scene_tree import SceneTreeWidget
-        from PySide6.QtWidgets import QTreeWidgetItem
         from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from widgets.scene_tree import SceneTreeWidget
 
         w = SceneTreeWidget()
 
@@ -450,9 +454,10 @@ class TestSceneTreeSignals:
 
     def test_link_selected_signal_payload(self, qapp):
         """test linkSelected signal payload is string link name."""
-        from widgets.scene_tree import SceneTreeWidget
-        from PySide6.QtWidgets import QTreeWidgetItem
         from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from widgets.scene_tree import SceneTreeWidget
 
         w = SceneTreeWidget()
 
@@ -471,9 +476,10 @@ class TestSceneTreeSignals:
 
     def test_no_signal_on_joint_selection(self, qapp):
         """test linkSelected NOT emitted when joint item selected."""
-        from widgets.scene_tree import SceneTreeWidget
-        from PySide6.QtWidgets import QTreeWidgetItem
         from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from widgets.scene_tree import SceneTreeWidget
 
         w = SceneTreeWidget()
 
@@ -1196,13 +1202,15 @@ class TestScaleCoherence:
     def env_and_scene(self):
         """create environment and scene manager."""
         import os
+
         import vtk
 
         os.environ.pop("DISPLAY", None)
         os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
-        from tesseract_robotics.tesseract_environment import Environment
         from tesseract_robotics.tesseract_common import GeneralResourceLocator
+        from tesseract_robotics.tesseract_environment import Environment
+
         from core.scene_manager import SceneManager
 
         if not Path(self.urdf).exists():

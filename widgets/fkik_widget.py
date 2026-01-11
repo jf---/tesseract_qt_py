@@ -2,21 +2,20 @@
 
 from __future__ import annotations
 
-from math import atan2, asin, pi
+from math import atan2
+
 import numpy as np
-
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QGroupBox,
-    QSplitter,
     QLabel,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt
 
-from widgets.joint_slider import JointSliderWidget
 from widgets.cartesian_editor import CartesianEditorWidget
+from widgets.joint_slider import JointSliderWidget
 
 
 def rotation_to_rpy(rotation: np.ndarray) -> tuple[float, float, float]:
@@ -141,16 +140,11 @@ class FKIKWidget(QWidget):
     def _create_chain_group(self, env, tcp_link: str):
         """Create a kinematic group from base_link to tcp_link."""
         try:
-            from tesseract_robotics.tesseract_kinematics import KinematicsPluginFactory
-            from tesseract_robotics.tesseract_scene_graph import SceneGraph
 
             sg = env.getSceneGraph()
 
             # Find base link (root of scene graph)
             base_link = sg.getRoot()
-
-            # Create kinematic group using chain from base to tcp
-            kin_info = env.getKinematicsInformation()
 
             # Try creating via environment's kinematic factory
             factory = env.getKinematicsFactory()
@@ -256,9 +250,9 @@ class FKIKWidget(QWidget):
         self._syncing = True
 
         try:
-            from tesseract_robotics.tesseract_kinematics import KinGroupIKInput
             import tesseract_robotics.tesseract_common as tc
             from scipy.spatial.transform import Rotation
+            from tesseract_robotics.tesseract_kinematics import KinGroupIKInput
 
             # Get fresh kinematic group (stored ref becomes invalid after setState)
             kin_group = self._env.getKinematicGroup(self._group_name)

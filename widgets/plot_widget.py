@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QToolBar
-from PySide6.QtGui import QAction
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-import numpy as np
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QToolBar, QVBoxLayout, QWidget
 
 
 class PlotWidget(QWidget):

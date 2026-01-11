@@ -7,10 +7,8 @@ from pathlib import Path
 import numpy as np
 import vtk
 from loguru import logger
-
 from tesseract_robotics import tesseract_common
 from tesseract_robotics import tesseract_geometry as tg
-from tesseract_robotics import tesseract_scene_graph as sg
 
 from .contact_viz import ContactVisualizer
 
