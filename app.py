@@ -374,84 +374,80 @@ class TesseractViewer(QMainWindow):
         self._setup_shortcuts()
 
     def load(self, urdf: str | Path, srdf: str | Path = None):
-        """Load robot from URDF with progress dialog."""
+        """Load robot from URDF/SRDF."""
+        urdf_path = Path(urdf)
+        logger.info(f"Loading {urdf_path.name}")
+
+        # Auto-detect SRDF if not provided
+        if not srdf:
+            auto_srdf = urdf_path.with_suffix(".srdf")
+            if auto_srdf.exists():
+                srdf = auto_srdf
+                logger.info(f"Auto-detected SRDF: {srdf}")
+
+        self._paths = (urdf_path, Path(srdf) if srdf else None)
+        self._env = Environment()
+        loc = GeneralResourceLocator()
+
+        logger.info("Initializing tesseract environment")
+        if srdf:
+            if not self._env.init(str(urdf), str(srdf), loc):
+                raise RuntimeError("Failed to init environment with SRDF")
+        else:
+            if not self._env.init(str(urdf), loc):
+                raise RuntimeError("Failed to init environment from URDF")
+
+        logger.info("Loading VTK scene")
+        self.render.load_environment(self._env)
+
+        logger.info("Building scene tree")
+        self.tree.load_environment(self._env)
+
+        logger.info("Setting up manipulation widget")
+        self.manip_widget.set_environment(self._env)
+
+        logger.info("Configuring joints")
+        self._setup_joints()
+
+        logger.info("Loading robot info panel")
+        self.info_panel.load_environment(self._env)
+
+        logger.info("Detecting TCP link")
+        tcp_link = self._detect_tcp_link()
+        if tcp_link:
+            self.info_panel.set_tcp_link(tcp_link)
+
+        logger.info("Setting up IK solver")
+        self.ik_widget.set_environment(self._env)
+        self.ik_widget.set_scene_manager(self.render.scene)
+
+        logger.info("Loading advanced widgets")
+        self._populate_p2_widgets()
+        if srdf:
+            self._load_acm_from_env()
+
+        self.statusBar().showMessage(f"Loaded: {urdf}")
+        self._add_recent(str(Path(urdf).resolve()))
+        self._update_tcp_status({})
+        logger.success(f"Loaded: {urdf_path.name}")
+
+    def _load_with_progress(self, urdf: str | Path, srdf: str | Path = None):
+        """Wrap load() with progress dialog."""
         from PySide6.QtWidgets import QProgressDialog
 
-        urdf_path = Path(urdf)
-
-        # Progress dialog that updates from loguru messages
-        progress = QProgressDialog(f"Loading {urdf_path.name}...", None, 0, 0, self)
+        progress = QProgressDialog(f"Loading {Path(urdf).name}...", None, 0, 0, self)
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
         progress.setMinimumWidth(400)
-        progress.setRange(0, 0)  # Indeterminate until we start
         progress.show()
 
         def progress_sink(message):
-            text = message.record["message"]
-            progress.setLabelText(text)
+            progress.setLabelText(message.record["message"])
             QApplication.processEvents()
 
         sink_id = logger.add(progress_sink, level="INFO", format="{message}")
-
         try:
-            logger.info(f"Loading {urdf_path.name}")
-
-            # Auto-detect SRDF if not provided
-            if not srdf:
-                auto_srdf = urdf_path.with_suffix(".srdf")
-                if auto_srdf.exists():
-                    srdf = auto_srdf
-                    logger.info(f"Auto-detected SRDF: {srdf}")
-
-            self._paths = (urdf_path, Path(srdf) if srdf else None)
-            self._env = Environment()
-            loc = GeneralResourceLocator()
-
-            logger.info("Initializing tesseract environment")
-            if srdf:
-                if not self._env.init(str(urdf), str(srdf), loc):
-                    raise RuntimeError("Failed to init environment with SRDF")
-            else:
-                if not self._env.init(str(urdf), loc):
-                    raise RuntimeError("Failed to init environment from URDF")
-
-            logger.info("Loading VTK scene")
-            self.render.load_environment(self._env)
-
-            logger.info("Building scene tree")
-            self.tree.load_environment(self._env)
-
-            logger.info("Setting up manipulation widget")
-            self.manip_widget.set_environment(self._env)
-
-            logger.info("Configuring joints")
-            self._setup_joints()
-
-            logger.info("Loading robot info panel")
-            self.info_panel.load_environment(self._env)
-
-            logger.info("Detecting TCP link")
-            tcp_link = self._detect_tcp_link()
-            if tcp_link:
-                self.info_panel.set_tcp_link(tcp_link)
-
-            logger.info("Setting up IK solver")
-            self.ik_widget.set_environment(self._env)
-            self.ik_widget.set_scene_manager(self.render.scene)
-
-            logger.info("Loading advanced widgets")
-            self._populate_p2_widgets()
-            if srdf:
-                self._load_acm_from_env()
-
-            logger.info("Finalizing")
-            self.statusBar().showMessage(f"Loaded: {urdf}")
-            self._add_recent(str(Path(urdf).resolve()))
-            self._update_tcp_status({})
-
-            logger.success(f"Loaded: {urdf_path.name}")
-
+            self.load(urdf, srdf)
         except Exception as e:
             logger.exception(f"Failed to load: {e}")
             QMessageBox.critical(self, "Error", str(e))
@@ -509,7 +505,7 @@ class TesseractViewer(QMainWindow):
     def _open_urdf(self):
         path, _ = QFileDialog.getOpenFileName(self, "Open URDF", "", "URDF (*.urdf);;All (*)")
         if path:
-            self.load(path)
+            self._load_with_progress(path)
 
     def _open_srdf(self):
         if not self._paths[0]:
@@ -519,7 +515,7 @@ class TesseractViewer(QMainWindow):
             self, "Open SRDF", str(self._paths[0].parent), "SRDF (*.srdf)"
         )
         if path:
-            self.load(self._paths[0], path)
+            self._load_with_progress(self._paths[0], path)
 
     def _add_recent(self, path: str):
         """Add to recent files."""
@@ -549,7 +545,7 @@ class TesseractViewer(QMainWindow):
         if idx < len(recent):
             path = Path(recent[idx])
             if path.exists():
-                self.load(path)
+                self._load_with_progress(path)
             else:
                 QMessageBox.warning(self, "Not Found", f"File not found: {path}")
                 recent.remove(str(path))
@@ -558,7 +554,7 @@ class TesseractViewer(QMainWindow):
 
     def _reload(self):
         if self._paths[0]:
-            self.load(*self._paths)
+            self._load_with_progress(*self._paths)
 
     def _save_config(self):
         """Save joint config to JSON."""
@@ -1447,7 +1443,7 @@ def main():
     v.activateWindow()
 
     if args.urdf:
-        v.load(args.urdf, args.srdf)
+        v._load_with_progress(args.urdf, args.srdf)
         v.render.vtk_widget.GetRenderWindow().Render()
     else:
         # Auto-load ABB robot from tesseract_support
@@ -1480,7 +1476,7 @@ def main():
                         break
             if urdf and urdf.exists():
                 srdf = support_dir / "urdf" / "abb_irb2400.srdf"
-                v.load(str(urdf), str(srdf) if srdf.exists() else None)
+                v._load_with_progress(str(urdf), str(srdf) if srdf.exists() else None)
                 v.render.vtk_widget.GetRenderWindow().Render()
             else:
                 logger.warning("Default ABB URDF not found in any site-packages")
