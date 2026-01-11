@@ -256,23 +256,43 @@ show_workspace(points, scalars)
 - Tooltips on cartesian_editor, manipulation_widget
 
 ### Logging
-All modules use loguru. Converted from print():
+
+**Python (loguru)** - all modules use loguru:
+
 - `core/scene_manager.py`
 - `widgets/ik_widget.py`
 - `widgets/info_panel.py`
 
+**Tesseract C++ logging** - ALWAYS enable when debugging crashes:
+
+```python
+import tesseract_robotics.tesseract_common as tc
+
+# Levels: TRACE, DEBUG, INFO, WARN, ERROR, FATAL
+tc.setLogLevel(tc.LogLevel.DEBUG)
+
+# Call BEFORE loading environment to catch init errors
+```
+
+C++ warnings appear as `Warning:` or `Error:` in stderr. Enable TRACE/DEBUG to see what tesseract is doing before a segfault. This is non-negotiable for crash debugging.
+
 ### Known Issues
+
 - Qt dock objectName warnings (cosmetic, affects state restore)
-- Fix: `dock.setObjectName("dock_name")` for each QDockWidget in app.py
-- URDF reload crash when switching between different robots (ABB → IIWA7)
+  - Fix: `dock.setObjectName("dock_name")` for each QDockWidget in app.py
+- ~~URDF reload crash when switching between different robots~~ **FIXED**
+  - Was: `fkik_widget.set_environment()` called `setState()` with stale joint names
+  - Fix: Removed premature `_update_ik_from_fk()` call
 
 ## CRITICAL: URDF/SRDF Are Always Paired
 
 **NEVER delete or separate URDF from its SRDF.** They are a matched pair:
+
 - URDF defines geometry and kinematics
 - SRDF defines semantic info (groups, ACM, states, plugin configs)
 
 When copying robot files to fixtures, copy ALL related files:
+
 - `robot.urdf`
 - `robot.srdf`
 - Any referenced config YAMLs (check SRDF for `<kinematics_plugin_config>`)

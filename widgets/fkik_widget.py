@@ -129,9 +129,9 @@ class FKIKWidget(QWidget):
             else:
                 self._joint_names = []
 
-            # Initialize IK display from current joint values
-            if self._joint_names:
-                self._update_ik_from_fk(self.joint_slider.get_values())
+            # NOTE: Don't call _update_ik_from_fk() here!
+            # joint_slider still has OLD robot's joints at this point.
+            # IK display will update when set_joints() is called.
 
         except Exception as e:
             self._joint_names = []
@@ -140,7 +140,6 @@ class FKIKWidget(QWidget):
     def _create_chain_group(self, env, tcp_link: str):
         """Create a kinematic group from base_link to tcp_link."""
         try:
-
             sg = env.getSceneGraph()
 
             # Find base link (root of scene graph)
