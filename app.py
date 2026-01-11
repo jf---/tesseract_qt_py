@@ -1,41 +1,60 @@
 """Tesseract Qt Viewer."""
+
 from __future__ import annotations
 
 import sys
 import os
 
 # CRITICAL: macOS VTK+Qt setup - NO X11
-if sys.platform == 'darwin':
-    os.environ.pop('DISPLAY', None)
-    os.environ['QT_QPA_PLATFORM'] = 'cocoa'
+if sys.platform == "darwin":
+    os.environ.pop("DISPLAY", None)
+    os.environ["QT_QPA_PLATFORM"] = "cocoa"
 
 # Force QOpenGLWidget base for VTK - required for rendering to work
 import vtkmodules.qt
+
 vtkmodules.qt.QVTKRWIBase = "QOpenGLWidget"
 
 from loguru import logger
+
 logger.add("/tmp/tesseract_viewer.log", rotation="1 MB", level="DEBUG")
 logger.info("Starting tesseract_qt_py viewer")
+
 
 # Log uncaught exceptions
 def _excepthook(exc_type, exc_value, exc_tb):
     logger.opt(exception=(exc_type, exc_value, exc_tb)).error("Uncaught exception")
+
+
 sys.excepthook = _excepthook
 
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QDockWidget, QFileDialog, QMessageBox, QStatusBar,
-    QInputDialog, QLabel,
+    QApplication,
+    QMainWindow,
+    QDockWidget,
+    QFileDialog,
+    QMessageBox,
+    QStatusBar,
+    QInputDialog,
+    QLabel,
 )
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
 from tesseract_robotics.tesseract_environment import Environment
-from tesseract_robotics.tesseract_common import GeneralResourceLocator, FilesystemPath, CollisionMarginData
+from tesseract_robotics.tesseract_common import (
+    GeneralResourceLocator,
+    FilesystemPath,
+    CollisionMarginData,
+)
 from tesseract_robotics.tesseract_scene_graph import JointType
 from tesseract_robotics.tesseract_collision import (
-    ContactRequest, ContactResultMap, ContactResultVector, ContactTestType,
+    ContactRequest,
+    ContactResultMap,
+    ContactResultVector,
+    ContactTestType,
     ContactManagersPluginFactory,
 )
 from tesseract_robotics.tesseract_common import _FilesystemPath
@@ -78,7 +97,7 @@ class TesseractViewer(QMainWindow):
     def closeEvent(self, event):
         """Clean up resources on window close."""
         # Stop trajectory player timer
-        if hasattr(self, 'traj_player') and self.traj_player._timer.isActive():
+        if hasattr(self, "traj_player") and self.traj_player._timer.isActive():
             self.traj_player._timer.stop()
 
         # Save window state
@@ -108,7 +127,9 @@ class TesseractViewer(QMainWindow):
         status_bar.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
 
         copy_action = QAction("Copy Message", status_bar)
-        copy_action.triggered.connect(lambda: QApplication.clipboard().setText(status_bar.currentMessage()))
+        copy_action.triggered.connect(
+            lambda: QApplication.clipboard().setText(status_bar.currentMessage())
+        )
         status_bar.addAction(copy_action)
 
         # TCP pose label - must be created here before setStatusBar() for proper Qt ownership
@@ -303,13 +324,23 @@ class TesseractViewer(QMainWindow):
         self.manip_widget.jointValuesChanged.connect(self.ik_widget.update_current_tcp_pose)
         self.manip_widget.jointValuesChanged.connect(self._check_collisions_realtime)
         self.manip_widget.jointValuesChanged.connect(self._update_tcp_status)
-        self.tree.linkSelected.connect(lambda n: (self.render.scene.highlight_link(n), self.render.render()))
+        self.tree.linkSelected.connect(
+            lambda n: (self.render.scene.highlight_link(n), self.render.render())
+        )
         self.tree.linkSelected.connect(self.info_panel.set_tcp_link)
-        self.tree.linkVisibilityChanged.connect(lambda n, v: (self.render.scene.set_link_visibility(n, v), self.render.render()))
-        self.tree.linkFrameToggled.connect(lambda n, v: (self.render.scene.show_frame(n, v), self.render.render()))
+        self.tree.linkVisibilityChanged.connect(
+            lambda n, v: (self.render.scene.set_link_visibility(n, v), self.render.render())
+        )
+        self.tree.linkFrameToggled.connect(
+            lambda n, v: (self.render.scene.show_frame(n, v), self.render.render())
+        )
         self.render.linkClicked.connect(self.tree.select_link)
-        self.ik_widget.solutionFound.connect(lambda v: self.manip_widget.set_joint_values(v, emit_signal=True))
-        self.ik_widget.targetPoseSet.connect(lambda pose: (self.render.scene.show_ik_target(pose), self.render.render()))
+        self.ik_widget.solutionFound.connect(
+            lambda v: self.manip_widget.set_joint_values(v, emit_signal=True)
+        )
+        self.ik_widget.targetPoseSet.connect(
+            lambda pose: (self.render.scene.show_ik_target(pose), self.render.render())
+        )
         self.traj_player.frameChanged.connect(self._on_trajectory_frame_changed)
         self.traj_player.frameChanged.connect(self.plot.set_frame_marker)
         self.ik_widget.planRequested.connect(self._plan_motion)
@@ -452,7 +483,9 @@ class TesseractViewer(QMainWindow):
         if not self._paths[0]:
             QMessageBox.information(self, "Info", "Load URDF first")
             return
-        path, _ = QFileDialog.getOpenFileName(self, "Open SRDF", str(self._paths[0].parent), "SRDF (*.srdf)")
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Open SRDF", str(self._paths[0].parent), "SRDF (*.srdf)"
+        )
         if path:
             self.load(self._paths[0], path)
 
@@ -471,7 +504,7 @@ class TesseractViewer(QMainWindow):
         for i, act in enumerate(self._recent_actions):
             if i < len(recent):
                 p = Path(recent[i])
-                act.setText(f"{i+1}. {p.name}")
+                act.setText(f"{i + 1}. {p.name}")
                 act.setToolTip(str(p))
                 act.setVisible(True)
             else:
@@ -505,6 +538,7 @@ class TesseractViewer(QMainWindow):
                 values = self.manip_widget.get_joint_values()
                 path = Path(path)
                 import json
+
                 with path.open("w") as f:
                     json.dump(values, f, indent=2)
                 self.statusBar().showMessage(f"Saved: {path}")
@@ -520,6 +554,7 @@ class TesseractViewer(QMainWindow):
             try:
                 path = Path(path)
                 import json
+
                 with path.open("r") as f:
                     values = json.load(f)
                 self.manip_widget.set_joint_values(values)
@@ -552,15 +587,12 @@ class TesseractViewer(QMainWindow):
                 self.manip_widget.set_joint_values(values)
                 self.statusBar().showMessage(f"Loaded pose: {name}")
 
-
     def _load_trajectory(self):
         """Load trajectory via file dialog."""
         if not self._env:
             QMessageBox.information(self, "Info", "Load URDF first")
             return
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Load Trajectory", "", "JSON (*.json);;All (*)"
-        )
+        path, _ = QFileDialog.getOpenFileName(self, "Load Trajectory", "", "JSON (*.json);;All (*)")
         if path:
             self._load_trajectory_file(path)
 
@@ -569,6 +601,7 @@ class TesseractViewer(QMainWindow):
         try:
             path = Path(path)
             import json
+
             with path.open("r") as f:
                 data = json.load(f)
 
@@ -602,7 +635,11 @@ class TesseractViewer(QMainWindow):
         waypoint = self.traj_player.get_waypoint()
         if waypoint:
             # Handle both dict and object waypoints
-            joints = waypoint.get('joints') if isinstance(waypoint, dict) else getattr(waypoint, 'joints', None)
+            joints = (
+                waypoint.get("joints")
+                if isinstance(waypoint, dict)
+                else getattr(waypoint, "joints", None)
+            )
             if joints:
                 self.manip_widget.set_joint_values(joints)
 
@@ -651,7 +688,7 @@ class TesseractViewer(QMainWindow):
         joint_limits = {name: (lo, hi) for name, (lo, hi, _) in self._joint_limits.items()}
 
         # Get TCP link
-        tcp_link = self.info_panel.tcp_link if hasattr(self.info_panel, 'tcp_link') else None
+        tcp_link = self.info_panel.tcp_link if hasattr(self.info_panel, "tcp_link") else None
         if not tcp_link:
             QMessageBox.information(self, "Info", "No TCP link detected")
             return
@@ -659,10 +696,7 @@ class TesseractViewer(QMainWindow):
         try:
             self.statusBar().showMessage("Sampling workspace (500 points)...")
             points = self.render.scene.sample_workspace(
-                joint_names=joint_names,
-                joint_limits=joint_limits,
-                n_samples=500,
-                tcp_link=tcp_link
+                joint_names=joint_names, joint_limits=joint_limits, n_samples=500, tcp_link=tcp_link
             )
 
             if len(points) > 0:
@@ -733,7 +767,9 @@ class TesseractViewer(QMainWindow):
             else:
                 logger.warning(f"Found {len(results)} collision(s)")
             for i, contact in enumerate(results):
-                logger.debug(f"Contact {i}: {contact.link_names[0]} <-> {contact.link_names[1]}, dist={contact.distance:.4f}")
+                logger.debug(
+                    f"Contact {i}: {contact.link_names[0]} <-> {contact.link_names[1]}, dist={contact.distance:.4f}"
+                )
 
             # Visualize
             self.render.scene.visualize_contacts(results)
@@ -748,7 +784,7 @@ class TesseractViewer(QMainWindow):
                     contact.distance,
                     contact.nearest_points[0],
                     contact.nearest_points[1],
-                    contact.normal
+                    contact.normal,
                 )
             self.contact_widget.set_result_count(len(results))
 
@@ -821,6 +857,7 @@ class TesseractViewer(QMainWindow):
                 t = tf.translation()
                 # Extract RPY from rotation matrix
                 import math
+
                 m = tf.rotation()
                 # Roll, Pitch, Yaw from rotation matrix
                 if abs(m[2, 0]) < 0.9999:
@@ -861,9 +898,10 @@ class TesseractViewer(QMainWindow):
 
             # Confirm deletion
             reply = QMessageBox.question(
-                self, "Delete Link",
+                self,
+                "Delete Link",
                 f"Delete link '{link_name}' and all children?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if reply != QMessageBox.StandardButton.Yes:
                 return
@@ -957,14 +995,20 @@ class TesseractViewer(QMainWindow):
             return
 
         try:
-            from tesseract_robotics.planning import Robot, MotionProgram, CartesianTarget, Pose, TaskComposer
+            from tesseract_robotics.planning import (
+                Robot,
+                MotionProgram,
+                CartesianTarget,
+                Pose,
+                TaskComposer,
+            )
 
             self.task_composer_widget.clear_log()
             self.task_composer_widget.log("Starting task composer execution...")
             self.statusBar().showMessage("Executing task composer...")
 
             # Get current TCP link and pose
-            tcp_link = getattr(self.info_panel, '_tcp_link', None)
+            tcp_link = getattr(self.info_panel, "_tcp_link", None)
             if not tcp_link:
                 self.task_composer_widget.log("Error: No TCP link detected")
                 return
@@ -988,12 +1032,14 @@ class TesseractViewer(QMainWindow):
 
             # Create a simple motion: current -> offset -> current
             import numpy as np
+
             trans = current_tf.translation()
             # Small Z offset for demo motion
             target_pose = Pose.from_xyz_quat(trans[0], trans[1], trans[2] + 0.05, 0, 0, 0, 1)
 
-            program = (MotionProgram("manipulator", tcp_frame=tcp_link, profile="DEFAULT")
-                .move_to(CartesianTarget(target_pose, profile="DEFAULT")))
+            program = MotionProgram("manipulator", tcp_frame=tcp_link, profile="DEFAULT").move_to(
+                CartesianTarget(target_pose, profile="DEFAULT")
+            )
 
             # Use selected pipeline from widget
             pipeline = self.task_composer_widget.current_task() or "FreespacePipeline"
@@ -1007,10 +1053,12 @@ class TesseractViewer(QMainWindow):
                 # Extract trajectory for player
                 traj_data = []
                 for i, wp in enumerate(result):
-                    traj_data.append({
-                        "time": float(i) * 0.1,
-                        "joints": {joint_names[j]: wp[j] for j in range(len(joint_names))}
-                    })
+                    traj_data.append(
+                        {
+                            "time": float(i) * 0.1,
+                            "joints": {joint_names[j]: wp[j] for j in range(len(joint_names))},
+                        }
+                    )
 
                 if traj_data:
                     self.plot.load_trajectory(traj_data, joint_names)
@@ -1053,7 +1101,9 @@ class TesseractViewer(QMainWindow):
 
     def _on_acm_generate(self, resolution: int):
         """Handle ACM generation request."""
-        self.statusBar().showMessage(f"ACM generation requested (resolution: {resolution}) - not implemented yet")
+        self.statusBar().showMessage(
+            f"ACM generation requested (resolution: {resolution}) - not implemented yet"
+        )
         logger.info(f"ACM generation requested with resolution {resolution}")
 
     def _on_tcp_changed(self, link_name: str):
@@ -1069,7 +1119,9 @@ class TesseractViewer(QMainWindow):
 
     def _on_tcp_offset_changed(self, x: float, y: float, z: float, rx: float, ry: float, rz: float):
         """Handle TCP offset change."""
-        self.statusBar().showMessage(f"TCP offset: [{x:.3f}, {y:.3f}, {z:.3f}] [{rx:.1f}°, {ry:.1f}°, {rz:.1f}°]")
+        self.statusBar().showMessage(
+            f"TCP offset: [{x:.3f}, {y:.3f}, {z:.3f}] [{rx:.1f}°, {ry:.1f}°, {rz:.1f}°]"
+        )
         logger.info(f"TCP offset changed: pos=[{x}, {y}, {z}], rot=[{rx}, {ry}, {rz}]")
 
     def _on_kin_group_added(self, name: str, group_type: str, data: object):
@@ -1185,7 +1237,9 @@ class TesseractViewer(QMainWindow):
                 joint_values = states[group][state_name]
                 self.manip_widget.set_joint_values(joint_values)
                 self.statusBar().showMessage(f"Applied state '{state_name}' for group '{group}'")
-                logger.info(f"Group state applied: {group}/{state_name} with {len(joint_values)} joints")
+                logger.info(
+                    f"Group state applied: {group}/{state_name} with {len(joint_values)} joints"
+                )
             else:
                 logger.warning(f"State not found: {group}/{state_name}")
         except Exception as e:
@@ -1245,6 +1299,7 @@ class TesseractViewer(QMainWindow):
         """Populate task composer widget with available pipelines."""
         try:
             from tesseract_robotics.planning import TaskComposer
+
             composer = TaskComposer.from_config()
 
             # Get available pipelines/tasks
@@ -1257,7 +1312,9 @@ class TesseractViewer(QMainWindow):
             self.task_composer_widget.set_tasks(pipelines, default="FreespacePipeline")
 
             # Set executors
-            self.task_composer_widget.set_executors(["TaskflowExecutor"], default="TaskflowExecutor")
+            self.task_composer_widget.set_executors(
+                ["TaskflowExecutor"], default="TaskflowExecutor"
+            )
 
             # Set environment path
             if self._paths[0]:
@@ -1271,7 +1328,7 @@ class TesseractViewer(QMainWindow):
         """Load group states from SRDF into widget."""
         try:
             kin_info = self._env.getKinematicsInformation()
-            if not kin_info or not hasattr(kin_info, 'group_states'):
+            if not kin_info or not hasattr(kin_info, "group_states"):
                 return
 
             states = {}  # {group: {state_name: {joint: value}}}
@@ -1292,11 +1349,11 @@ class TesseractViewer(QMainWindow):
             kin_info = self._env.getKinematicsInformation()
             groups = []
             if kin_info:
-                if hasattr(kin_info, 'chain_groups'):
+                if hasattr(kin_info, "chain_groups"):
                     groups.extend(kin_info.chain_groups.keys())
-                if hasattr(kin_info, 'joint_groups'):
+                if hasattr(kin_info, "joint_groups"):
                     groups.extend(kin_info.joint_groups.keys())
-                if hasattr(kin_info, 'link_groups'):
+                if hasattr(kin_info, "link_groups"):
                     groups.extend(kin_info.link_groups.keys())
             logger.debug(f"Found kinematic groups: {groups}")
             return list(set(groups))
@@ -1340,6 +1397,7 @@ class TesseractViewer(QMainWindow):
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Tesseract Qt Viewer")
     parser.add_argument("urdf", nargs="?", help="URDF file path")
     parser.add_argument("srdf", nargs="?", help="SRDF file path")
@@ -1368,6 +1426,7 @@ def main():
         try:
             from pathlib import Path
             import tesseract_robotics
+
             logger.info("No URDF specified, loading default ABB IRB2400")
             support_dir = Path(tesseract_robotics.get_tesseract_support_path())
             urdf = support_dir / "urdf" / "abb_irb2400.urdf"

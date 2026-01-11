@@ -1,4 +1,5 @@
 """Joint state slider widget."""
+
 from __future__ import annotations
 import math
 

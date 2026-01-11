@@ -1,4 +1,5 @@
 """Log viewer widget for displaying loguru logs."""
+
 from __future__ import annotations
 
 from collections import deque
@@ -22,11 +23,11 @@ LOG_LEVELS = ["DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
 
 # Color scheme with foreground and background for contrast in light/dark modes
 LOG_STYLES = {
-    "DEBUG":    {"fg": "#888888", "bg": "#F0F0F0"},
-    "INFO":     {"fg": "#1A1A1A", "bg": "#FFFFFF"},
-    "SUCCESS":  {"fg": "#155724", "bg": "#D4EDDA"},
-    "WARNING":  {"fg": "#856404", "bg": "#FFF3CD"},
-    "ERROR":    {"fg": "#721C24", "bg": "#F8D7DA"},
+    "DEBUG": {"fg": "#888888", "bg": "#F0F0F0"},
+    "INFO": {"fg": "#1A1A1A", "bg": "#FFFFFF"},
+    "SUCCESS": {"fg": "#155724", "bg": "#D4EDDA"},
+    "WARNING": {"fg": "#856404", "bg": "#FFF3CD"},
+    "ERROR": {"fg": "#721C24", "bg": "#F8D7DA"},
     "CRITICAL": {"fg": "#FFFFFF", "bg": "#DC3545"},
 }
 

@@ -2,6 +2,7 @@
 
 Uses the high-level tesseract_robotics.planning API.
 """
+
 from __future__ import annotations
 
 import numpy as np

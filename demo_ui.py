@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 """Demo UI without tesseract - just shows widgets with VTK primitives."""
+
 import sys
 import os
 
 # Force native Cocoa on macOS - NO X11
-if sys.platform == 'darwin':
-    os.environ.pop('DISPLAY', None)
-    os.environ['QT_QPA_PLATFORM'] = 'cocoa'
+if sys.platform == "darwin":
+    os.environ.pop("DISPLAY", None)
+    os.environ["QT_QPA_PLATFORM"] = "cocoa"
 
 # CRITICAL: Force QOpenGLWidget base for VTK+Qt on macOS
 import vtkmodules.qt
+
 vtkmodules.qt.QVTKRWIBase = "QOpenGLWidget"
 
 import numpy as np
@@ -17,10 +19,17 @@ from PySide6.QtWidgets import QApplication, QDockWidget
 from PySide6.QtCore import Qt
 
 from vtkmodules.vtkFiltersSources import (
-    vtkCubeSource, vtkSphereSource, vtkCylinderSource, vtkConeSource, vtkLineSource,
+    vtkCubeSource,
+    vtkSphereSource,
+    vtkCylinderSource,
+    vtkConeSource,
+    vtkLineSource,
 )
 from vtkmodules.vtkRenderingCore import (
-    vtkActor, vtkPolyDataMapper, vtkRenderer, vtkRenderWindow,
+    vtkActor,
+    vtkPolyDataMapper,
+    vtkRenderer,
+    vtkRenderWindow,
 )
 from vtkmodules.vtkRenderingAnnotation import vtkAxesActor
 from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera
@@ -160,7 +169,6 @@ def main():
     renderer = vtkRenderer()
     vtk_widget.GetRenderWindow().AddRenderer(renderer)
     vtk_widget.GetRenderWindow().SetWindowName("VTK")
-
 
     style = vtkInteractorStyleTrackballCamera()
     vtk_widget.SetInteractorStyle(style)

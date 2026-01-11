@@ -1,4 +1,5 @@
 """Joint trajectory plotting widget using matplotlib."""
+
 from __future__ import annotations
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QToolBar
@@ -11,7 +12,16 @@ import numpy as np
 class PlotWidget(QWidget):
     """Plot widget for joint values over time."""
 
-    COLORS = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf']
+    COLORS = [
+        "#e41a1c",
+        "#377eb8",
+        "#4daf4a",
+        "#984ea3",
+        "#ff7f00",
+        "#ffff33",
+        "#a65628",
+        "#f781bf",
+    ]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -41,10 +51,10 @@ class PlotWidget(QWidget):
 
         # Matplotlib figure
         self.figure = Figure(figsize=(5, 3), dpi=100)
-        self.figure.set_facecolor('white')
+        self.figure.set_facecolor("white")
         self.ax = self.figure.add_subplot(111)
-        self.ax.set_xlabel('Time (s)')
-        self.ax.set_ylabel('Joint Value (rad)')
+        self.ax.set_xlabel("Time (s)")
+        self.ax.set_ylabel("Joint Value (rad)")
         self.ax.grid(True, alpha=0.3)
         self.figure.subplots_adjust(left=0.12, right=0.95, top=0.92, bottom=0.15)
 
@@ -55,10 +65,10 @@ class PlotWidget(QWidget):
         if name in self.lines:
             return
         color = self.COLORS[len(self.lines) % len(self.COLORS)]
-        line, = self.ax.plot([], [], label=name, color=color, linewidth=1.5)
+        (line,) = self.ax.plot([], [], label=name, color=color, linewidth=1.5)
         self.lines[name] = line
         self.data[name] = ([], [])
-        self.ax.legend(loc='upper right', fontsize='small')
+        self.ax.legend(loc="upper right", fontsize="small")
 
     def set_trajectory(self, name: str, times: list[float], values: list[float]):
         if name not in self.lines:
@@ -77,8 +87,8 @@ class PlotWidget(QWidget):
 
     def reset(self):
         self.ax.clear()
-        self.ax.set_xlabel('Time (s)')
-        self.ax.set_ylabel('Joint Value (rad)')
+        self.ax.set_xlabel("Time (s)")
+        self.ax.set_ylabel("Joint Value (rad)")
         self.ax.grid(True, alpha=0.3)
         self.lines.clear()
         self.data.clear()
@@ -100,7 +110,7 @@ class PlotWidget(QWidget):
             values = [wp["joints"].get(joint_name, 0.0) for wp in trajectory]
             self.set_trajectory(joint_name, times, values)
 
-        self.ax.legend(loc='upper right', fontsize='small')
+        self.ax.legend(loc="upper right", fontsize="small")
         self.autoscale()
 
     def set_frame_marker(self, frame_idx: int):
@@ -118,7 +128,9 @@ class PlotWidget(QWidget):
         if self.frame_line:
             self.frame_line.set_xdata([time_value, time_value])
         else:
-            self.frame_line = self.ax.axvline(x=time_value, color='red', linestyle='--', linewidth=1.5)
+            self.frame_line = self.ax.axvline(
+                x=time_value, color="red", linestyle="--", linewidth=1.5
+            )
 
         self.canvas.draw_idle()
 

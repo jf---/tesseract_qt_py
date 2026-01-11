@@ -1,7 +1,9 @@
 """FK visualization demo."""
+
 from pathlib import Path
 
 # Example usage of FK visualization methods
+
 
 def demo_fk_viz(scene_manager, joint_values):
     """Demo forward kinematics visualization.
@@ -19,7 +21,7 @@ def demo_fk_viz(scene_manager, joint_values):
         scene_manager.show_tcp_marker(
             tcp_pose,
             radius=0.03,
-            color=(1.0, 0.0, 1.0)  # magenta
+            color=(1.0, 0.0, 1.0),  # magenta
         )
 
         # 3. Show FK chain from base to TCP
@@ -28,7 +30,7 @@ def demo_fk_viz(scene_manager, joint_values):
             base_link="base_link",
             tip_link=tcp_link,
             line_width=4.0,
-            color=(0.0, 1.0, 1.0)  # cyan
+            color=(0.0, 1.0, 1.0),  # cyan
         )
 
     # Clear FK viz when done

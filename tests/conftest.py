@@ -1,8 +1,10 @@
 """pytest config - macOS VTK+Qt setup, fixtures."""
+
 # CRITICAL: macOS VTK+Qt env BEFORE imports
 import os
-os.environ.pop('DISPLAY', None)
-os.environ['QT_QPA_PLATFORM'] = 'cocoa'
+
+os.environ.pop("DISPLAY", None)
+os.environ["QT_QPA_PLATFORM"] = "cocoa"
 
 import sys
 from pathlib import Path
@@ -17,6 +19,7 @@ def vtk_qt_setup():
     """configure VTK Qt rendering for macOS."""
     try:
         import vtkmodules.qt
+
         vtkmodules.qt.QVTKRWIBase = "QOpenGLWidget"
     except ImportError:
         pass  # VTK not needed for widget-only tests
@@ -27,6 +30,7 @@ def vtk_qt_setup():
 def qapp():
     """Qt application fixture."""
     from PySide6.QtWidgets import QApplication
+
     app = QApplication.instance()
     if app is None:
         app = QApplication([])
@@ -36,6 +40,7 @@ def qapp():
 @pytest.fixture
 def sample_trajectory():
     """sample trajectory for testing player widget."""
+
     class MockWaypoint:
         def __init__(self, time, positions=None):
             self.time = time

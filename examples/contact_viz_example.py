@@ -1,12 +1,22 @@
 """Contact visualization example."""
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
 import numpy as np
-from tesseract_robotics.tesseract_collision import ContactRequest, ContactResultMap, ContactResultVector, ContactTestType_ALL
-from tesseract_robotics.tesseract_common import CollisionMarginData, FilesystemPath, GeneralResourceLocator
+from tesseract_robotics.tesseract_collision import (
+    ContactRequest,
+    ContactResultMap,
+    ContactResultVector,
+    ContactTestType_ALL,
+)
+from tesseract_robotics.tesseract_common import (
+    CollisionMarginData,
+    FilesystemPath,
+    GeneralResourceLocator,
+)
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -49,7 +59,11 @@ class ContactDemoWindow(QMainWindow):
         self._env = Environment()
         loc = GeneralResourceLocator()
 
-        if not self._env.init(FilesystemPath(urdf_path), FilesystemPath(srdf_path) if srdf_path else FilesystemPath(), loc):
+        if not self._env.init(
+            FilesystemPath(urdf_path),
+            FilesystemPath(srdf_path) if srdf_path else FilesystemPath(),
+            loc,
+        ):
             raise RuntimeError("Failed to init environment")
 
         self.render.load_environment(self._env)
@@ -81,7 +95,9 @@ class ContactDemoWindow(QMainWindow):
 
         print(f"Found {len(results)} contacts")
         for i, contact in enumerate(results):
-            print(f"Contact {i}: {contact.link_names[0]} <-> {contact.link_names[1]}, dist={contact.distance:.4f}")
+            print(
+                f"Contact {i}: {contact.link_names[0]} <-> {contact.link_names[1]}, dist={contact.distance:.4f}"
+            )
 
         # Visualize
         self.render.scene.visualize_contacts(results)

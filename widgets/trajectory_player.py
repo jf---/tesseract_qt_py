@@ -1,4 +1,5 @@
 """Trajectory playback widget."""
+
 from __future__ import annotations
 
 from PySide6.QtCore import Signal, Qt, QTimer
@@ -191,9 +192,9 @@ class TrajectoryPlayerWidget(QWidget):
             try:
                 waypoint = self._trajectory[frame_idx]
                 # Try common attributes for time
-                if hasattr(waypoint, 'time'):
+                if hasattr(waypoint, "time"):
                     time = waypoint.time
-                elif hasattr(waypoint, 'time_from_start'):
+                elif hasattr(waypoint, "time_from_start"):
                     time = waypoint.time_from_start
             except (IndexError, AttributeError):
                 pass

@@ -1,4 +1,5 @@
 """Scene graph tree widget."""
+
 from __future__ import annotations
 
 from PySide6.QtCore import Signal, Qt
@@ -167,7 +168,9 @@ class SceneTreeWidget(QWidget):
             # Toggle Visibility
             is_visible = item.checkState(0) == Qt.CheckState.Checked
             action_toggle = QAction("Toggle Visibility", self)
-            action_toggle.triggered.connect(lambda: self.linkVisibilityChanged.emit(link_name, not is_visible))
+            action_toggle.triggered.connect(
+                lambda: self.linkVisibilityChanged.emit(link_name, not is_visible)
+            )
             menu.addAction(action_toggle)
 
             # Show Frame
@@ -192,7 +195,9 @@ class SceneTreeWidget(QWidget):
             child = item.child(i)
             data = child.data(0, Qt.ItemDataRole.UserRole)
             if data and data[0] == "link":
-                child.setCheckState(0, Qt.CheckState.Checked if visible else Qt.CheckState.Unchecked)
+                child.setCheckState(
+                    0, Qt.CheckState.Checked if visible else Qt.CheckState.Unchecked
+                )
             self._set_all_visibility(child, visible)
 
     def select_link(self, link_name: str):

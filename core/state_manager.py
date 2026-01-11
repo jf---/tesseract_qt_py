@@ -1,4 +1,5 @@
 """State save/restore for joint configurations."""
+
 from __future__ import annotations
 
 import json

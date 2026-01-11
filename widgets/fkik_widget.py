@@ -1,4 +1,5 @@
 """Unified FK/IK widget with bidirectional sync."""
+
 from __future__ import annotations
 
 from math import atan2, asin, pi
@@ -233,7 +234,9 @@ class FKIKWidget(QWidget):
         except Exception as e:
             self.status_label.setText(f"FK: {e}")
 
-    def _on_ik_pose_changed(self, x: float, y: float, z: float, roll: float, pitch: float, yaw: float):
+    def _on_ik_pose_changed(
+        self, x: float, y: float, z: float, roll: float, pitch: float, yaw: float
+    ):
         """Handle real-time IK pose change from Cartesian sliders."""
         if self._syncing:
             return
@@ -269,7 +272,7 @@ class FKIKWidget(QWidget):
             x, y, z, roll, pitch, yaw = self.cartesian_widget.get_pose()
 
             # Build target transform using scipy (more robust)
-            rot = Rotation.from_euler('xyz', [roll, pitch, yaw])
+            rot = Rotation.from_euler("xyz", [roll, pitch, yaw])
             mat = np.eye(4)
             mat[:3, :3] = rot.as_matrix()
             mat[:3, 3] = [x, y, z]
@@ -294,7 +297,9 @@ class FKIKWidget(QWidget):
             if solutions and len(solutions) > 0:
                 # Use first solution
                 sol = solutions[0]
-                joint_values = {self._joint_names[i]: float(sol[i]) for i in range(len(self._joint_names))}
+                joint_values = {
+                    self._joint_names[i]: float(sol[i]) for i in range(len(self._joint_names))
+                }
 
                 # Update FK sliders (without emitting their signal)
                 for name, value in joint_values.items():

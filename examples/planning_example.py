@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Example demonstrating motion planning with high-level API."""
+
 from pathlib import Path
 import sys
 import numpy as np

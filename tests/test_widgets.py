@@ -1,4 +1,5 @@
 """Test widget functionality."""
+
 import pytest
 
 
@@ -46,10 +47,7 @@ def test_contact_widget_results(qapp):
 
     widget = ContactComputeWidget()
 
-    widget.add_result(
-        "link_a", "link_b", 0.001,
-        [0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [1.0, 0.0, 0.0]
-    )
+    widget.add_result("link_a", "link_b", 0.001, [0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [1.0, 0.0, 0.0])
 
     assert widget.contact_results_widget.rowCount() == 1
     assert widget.contact_results_widget.item(0, 0).text() == "link_a"
@@ -65,10 +63,10 @@ def test_ik_widget_signals(qapp):
 
     widget = IKWidget()
 
-    assert hasattr(widget, 'solutionFound')
-    assert hasattr(widget, 'targetPoseSet')
-    assert hasattr(widget, 'planRequested')
-    assert hasattr(widget, 'set_planning_status')
+    assert hasattr(widget, "solutionFound")
+    assert hasattr(widget, "targetPoseSet")
+    assert hasattr(widget, "planRequested")
+    assert hasattr(widget, "set_planning_status")
 
 
 def test_scene_tree_signals(qapp):
@@ -77,9 +75,9 @@ def test_scene_tree_signals(qapp):
 
     widget = SceneTreeWidget()
 
-    assert hasattr(widget, 'linkSelected')
-    assert hasattr(widget, 'linkVisibilityChanged')
-    assert hasattr(widget, 'linkDeleteRequested')
+    assert hasattr(widget, "linkSelected")
+    assert hasattr(widget, "linkVisibilityChanged")
+    assert hasattr(widget, "linkDeleteRequested")
 
 
 def test_all_docks_in_view_menu():
@@ -90,10 +88,10 @@ def test_all_docks_in_view_menu():
     app_py = Path(__file__).parent.parent / "app.py"
     content = app_py.read_text()
 
-    dock_pattern = r'self\.(\w+_dock)\s*=\s*QDockWidget'
+    dock_pattern = r"self\.(\w+_dock)\s*=\s*QDockWidget"
     created_docks = set(re.findall(dock_pattern, content))
 
-    menu_pattern = r'view_menu\.addAction\(self\.(\w+_dock)\.toggleViewAction'
+    menu_pattern = r"view_menu\.addAction\(self\.(\w+_dock)\.toggleViewAction"
     menu_docks = set(re.findall(menu_pattern, content))
 
     missing = created_docks - menu_docks
@@ -109,7 +107,7 @@ def test_window_size_reasonable():
     content = app_py.read_text()
 
     # Check resize() call
-    match = re.search(r'self\.resize\((\d+),\s*(\d+)\)', content)
+    match = re.search(r"self\.resize\((\d+),\s*(\d+)\)", content)
     assert match, "No resize() call found"
 
     width, height = int(match.group(1)), int(match.group(2))
@@ -126,9 +124,9 @@ class TestCartesianEditor:
 
         widget = CartesianEditorWidget()
         assert widget is not None
-        assert hasattr(widget, 'x_spin')
-        assert hasattr(widget, 'x_slider')
-        assert hasattr(widget, 'roll_spin')
+        assert hasattr(widget, "x_spin")
+        assert hasattr(widget, "x_slider")
+        assert hasattr(widget, "roll_spin")
 
     def test_default_values(self, qapp):
         """Test default pose values."""
@@ -226,10 +224,10 @@ class TestFKIKWidget:
 
         widget = FKIKWidget()
         assert widget is not None
-        assert hasattr(widget, 'joint_slider')
-        assert hasattr(widget, 'cartesian_widget')
-        assert hasattr(widget, 'jointValuesChanged')
-        assert hasattr(widget, 'ikSolveRequested')
+        assert hasattr(widget, "joint_slider")
+        assert hasattr(widget, "cartesian_widget")
+        assert hasattr(widget, "jointValuesChanged")
+        assert hasattr(widget, "ikSolveRequested")
 
     def test_ik_solve_moves_vtk_actors(self, qapp):
         """Test IK solve updates VTK actor positions."""
@@ -266,14 +264,16 @@ class TestFKIKWidget:
         # Create FKIKWidget
         widget = FKIKWidget()
         widget.set_environment(env, "manipulator", "tool0")
-        widget.set_joints({
-            "joint_1": (-3.14, 3.14, 0.0),
-            "joint_2": (-1.74, 1.92, 0.0),
-            "joint_3": (-3.14, 3.14, 0.0),
-            "joint_4": (-3.14, 3.14, 0.0),
-            "joint_5": (-2.18, 2.18, 0.0),
-            "joint_6": (-6.28, 6.28, 0.0),
-        })
+        widget.set_joints(
+            {
+                "joint_1": (-3.14, 3.14, 0.0),
+                "joint_2": (-1.74, 1.92, 0.0),
+                "joint_3": (-3.14, 3.14, 0.0),
+                "joint_4": (-3.14, 3.14, 0.0),
+                "joint_5": (-2.18, 2.18, 0.0),
+                "joint_6": (-6.28, 6.28, 0.0),
+            }
+        )
 
         # Connect signal to scene update
         widget.jointValuesChanged.connect(scene.update_joint_values)
@@ -283,16 +283,18 @@ class TestFKIKWidget:
         widget._on_ik_solve_requested()
 
         # Verify IK solved
-        assert "solved" in widget.status_label.text().lower(), \
+        assert "solved" in widget.status_label.text().lower(), (
             f"IK should solve, got: {widget.status_label.text()}"
+        )
 
         # Get new link_6 position
         new_pos = link6_actors[0].GetCenter()
 
         # Position should have changed
         pos_changed = any(abs(new_pos[i] - initial_pos[i]) > 0.01 for i in range(3))
-        assert pos_changed, \
+        assert pos_changed, (
             f"VTK actor should move after IK. Initial: {initial_pos}, New: {new_pos}"
+        )
 
     def test_fk_updates_ik_display(self, qapp):
         """Test FK slider changes update IK Cartesian display."""
@@ -316,14 +318,16 @@ class TestFKIKWidget:
 
         widget = FKIKWidget()
         widget.set_environment(env, "manipulator", "tool0")
-        widget.set_joints({
-            "joint_1": (-3.14, 3.14, 0.0),
-            "joint_2": (-1.74, 1.92, 0.0),
-            "joint_3": (-3.14, 3.14, 0.0),
-            "joint_4": (-3.14, 3.14, 0.0),
-            "joint_5": (-2.18, 2.18, 0.0),
-            "joint_6": (-6.28, 6.28, 0.0),
-        })
+        widget.set_joints(
+            {
+                "joint_1": (-3.14, 3.14, 0.0),
+                "joint_2": (-1.74, 1.92, 0.0),
+                "joint_3": (-3.14, 3.14, 0.0),
+                "joint_4": (-3.14, 3.14, 0.0),
+                "joint_5": (-2.18, 2.18, 0.0),
+                "joint_6": (-6.28, 6.28, 0.0),
+            }
+        )
 
         # Get initial TCP pose
         initial_pose = widget.cartesian_widget.get_pose()
@@ -359,14 +363,16 @@ class TestFKIKWidget:
 
         widget = FKIKWidget()
         widget.set_environment(env, "manipulator", "tool0")
-        widget.set_joints({
-            "joint_1": (-3.14, 3.14, 0.0),
-            "joint_2": (-1.74, 1.92, 0.0),
-            "joint_3": (-3.14, 3.14, 0.0),
-            "joint_4": (-3.14, 3.14, 0.0),
-            "joint_5": (-2.18, 2.18, 0.0),
-            "joint_6": (-6.28, 6.28, 0.0),
-        })
+        widget.set_joints(
+            {
+                "joint_1": (-3.14, 3.14, 0.0),
+                "joint_2": (-1.74, 1.92, 0.0),
+                "joint_3": (-3.14, 3.14, 0.0),
+                "joint_4": (-3.14, 3.14, 0.0),
+                "joint_5": (-2.18, 2.18, 0.0),
+                "joint_6": (-6.28, 6.28, 0.0),
+            }
+        )
 
         # Get initial joint values
         initial_joints = widget.get_joint_values()
@@ -382,7 +388,6 @@ class TestFKIKWidget:
 
         # At least one joint should have changed
         changed = any(
-            abs(new_joints.get(j, 0) - initial_joints.get(j, 0)) > 0.01
-            for j in initial_joints
+            abs(new_joints.get(j, 0) - initial_joints.get(j, 0)) > 0.01 for j in initial_joints
         )
         assert changed, f"IK should update FK sliders. Status: {widget.status_label.text()}"

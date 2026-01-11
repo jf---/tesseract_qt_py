@@ -1,4 +1,5 @@
 """Tool path file dialog widget."""
+
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
@@ -52,9 +53,7 @@ class ToolPathFileDialog(QDialog):
         layout.addWidget(frame)
 
         # Dialog buttons
-        self.button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         layout.addWidget(self.button_box)

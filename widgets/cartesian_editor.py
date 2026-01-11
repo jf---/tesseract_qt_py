@@ -1,4 +1,5 @@
 """Cartesian position/orientation editor widget with sliders."""
+
 from __future__ import annotations
 
 from math import pi, degrees, radians
@@ -80,14 +81,24 @@ class CartesianEditorWidget(QWidget):
         layout.addStretch()
 
     def _create_axis_control(
-        self, layout: QGridLayout, row: int, label: str,
-        min_val: float, max_val: float, default: float
+        self,
+        layout: QGridLayout,
+        row: int,
+        label: str,
+        min_val: float,
+        max_val: float,
+        default: float,
     ) -> tuple[QSlider, QDoubleSpinBox]:
         """Create a slider + spinbox pair for an axis."""
         # Axis names for tooltips
-        axis_names = {"X": "X position", "Y": "Y position", "Z": "Z position",
-                      "R": "Roll (rotation about X)", "P": "Pitch (rotation about Y)",
-                      "Y": "Yaw (rotation about Z)"}
+        axis_names = {
+            "X": "X position",
+            "Y": "Y position",
+            "Z": "Z position",
+            "R": "Roll (rotation about X)",
+            "P": "Pitch (rotation about Y)",
+            "Y": "Yaw (rotation about Z)",
+        }
         unit = "m" if label in ("X", "Y", "Z") else "deg"
         tooltip = f"{axis_names.get(label, label)}\nRange: [{min_val:.1f}, {max_val:.1f}] {unit}"
 

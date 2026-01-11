@@ -1,4 +1,5 @@
 """Robot info panel widget."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -17,7 +18,7 @@ from PySide6.QtWidgets import (
 
 def rotation_matrix_to_rpy(R: np.ndarray) -> tuple[float, float, float]:
     """Convert 3x3 rotation matrix to roll-pitch-yaw (XYZ Euler angles)."""
-    sy = np.sqrt(R[0, 0]**2 + R[1, 0]**2)
+    sy = np.sqrt(R[0, 0] ** 2 + R[1, 0] ** 2)
     singular = sy < 1e-6
 
     if not singular:
@@ -70,9 +71,15 @@ class RobotInfoPanel(QWidget):
         self.joint_table.setColumnCount(4)
         self.joint_table.setHorizontalHeaderLabels(["Joint", "Value", "Min", "Max"])
         self.joint_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.joint_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.joint_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.joint_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.joint_table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.ResizeToContents
+        )
+        self.joint_table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.ResizeToContents
+        )
+        self.joint_table.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.ResizeMode.ResizeToContents
+        )
         self.joint_table.setAlternatingRowColors(True)
         self.joint_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.joint_table.verticalHeader().setVisible(False)

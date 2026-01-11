@@ -7,6 +7,7 @@ Use this to debug/report issues to tesseract_python_nanobind.
 
 Run with: python tests/test_task_composer_plugin_loading.py
 """
+
 from __future__ import annotations
 
 import os
@@ -18,7 +19,8 @@ def find_config_file() -> Path | None:
     """Search for task_composer_plugins.yaml in common locations."""
     candidates = [
         # User install location
-        Path.home() / "Code/CADCAM/tesseract_python_nanobind/ws/install/share/tesseract_task_composer/config/task_composer_plugins.yaml",
+        Path.home()
+        / "Code/CADCAM/tesseract_python_nanobind/ws/install/share/tesseract_task_composer/config/task_composer_plugins.yaml",
         # System install
         Path("/usr/local/share/tesseract_task_composer/config/task_composer_plugins.yaml"),
         # Conda env
@@ -42,13 +44,17 @@ def test_import_modules():
 
     try:
         import tesseract_robotics
-        print(f"✓ tesseract_robotics imported (version: {getattr(tesseract_robotics, '__version__', 'unknown')})")
+
+        print(
+            f"✓ tesseract_robotics imported (version: {getattr(tesseract_robotics, '__version__', 'unknown')})"
+        )
     except ImportError as e:
         print(f"✗ Failed to import tesseract_robotics: {e}")
         return False
 
     try:
         from tesseract_robotics import tesseract_task_composer as tc
+
         print("✓ tesseract_task_composer imported")
     except ImportError as e:
         print(f"✗ Failed to import tesseract_task_composer: {e}")
@@ -56,6 +62,7 @@ def test_import_modules():
 
     try:
         from tesseract_robotics.tesseract_common import GeneralResourceLocator
+
         print("✓ GeneralResourceLocator imported")
     except ImportError as e:
         print(f"✗ Failed to import GeneralResourceLocator: {e}")
@@ -73,7 +80,8 @@ def test_config_file():
         print("✗ No task_composer_plugins.yaml found")
         print("  Checked locations:")
         for p in [
-            Path.home() / "Code/CADCAM/tesseract_python_nanobind/ws/install/share/tesseract_task_composer/config/task_composer_plugins.yaml",
+            Path.home()
+            / "Code/CADCAM/tesseract_python_nanobind/ws/install/share/tesseract_task_composer/config/task_composer_plugins.yaml",
             Path("/usr/local/share/tesseract_task_composer/config/task_composer_plugins.yaml"),
             Path(sys.prefix) / "share/tesseract_task_composer/config/task_composer_plugins.yaml",
         ]:
@@ -175,7 +183,7 @@ def test_available_plugins(factory):
     print("\n=== Checking Available Plugins ===")
 
     # Check if factory has methods to list plugins
-    factory_attrs = [a for a in dir(factory) if not a.startswith('_')]
+    factory_attrs = [a for a in dir(factory) if not a.startswith("_")]
     print(f"Factory methods: {factory_attrs}")
 
     # Try common method patterns

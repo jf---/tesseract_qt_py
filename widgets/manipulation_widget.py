@@ -1,4 +1,5 @@
 """Manipulation widget for robot control."""
+
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal

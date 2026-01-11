@@ -1,4 +1,5 @@
 """IK solver widget."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -136,6 +137,7 @@ class IKWidget(QWidget):
 
         # Get movable joints and limits for numerical IK fallback
         from tesseract_robotics.tesseract_scene_graph import JointType
+
         movable_types = (JointType.REVOLUTE, JointType.CONTINUOUS, JointType.PRISMATIC)
         self._joint_names = []
         self._joint_limits = {}
@@ -190,7 +192,8 @@ class IKWidget(QWidget):
             # Convert RPY to transform
             from scipy.spatial.transform import Rotation
             import tesseract_robotics.tesseract_common as tc
-            rot = Rotation.from_euler('xyz', [roll, pitch, yaw])
+
+            rot = Rotation.from_euler("xyz", [roll, pitch, yaw])
 
             # Create Isometry3d from 4x4 matrix (properties are read-only)
             mat = np.eye(4)
@@ -254,7 +257,9 @@ class IKWidget(QWidget):
                         break
 
             if not within_limits:
-                self.status_label.setText(f"Solution found but violates limits (dist={best_dist:.4f})")
+                self.status_label.setText(
+                    f"Solution found but violates limits (dist={best_dist:.4f})"
+                )
                 self.status_label.setStyleSheet("color: orange;")
             else:
                 self.status_label.setText(f"Solution found! (dist={best_dist:.4f})")
@@ -269,6 +274,7 @@ class IKWidget(QWidget):
             self.status_label.setStyleSheet("color: red;")
             logger.error(f"IK solve error: {e}")
             import traceback
+
             traceback.print_exc()
 
     def _solve_ik_numerical(self):
@@ -280,8 +286,10 @@ class IKWidget(QWidget):
         try:
             # Get target pose from UI
             target_pos = np.array([self.x_spin.value(), self.y_spin.value(), self.z_spin.value()])
-            target_rpy = np.array([self.roll_spin.value(), self.pitch_spin.value(), self.yaw_spin.value()])
-            target_rot = Rotation.from_euler('xyz', target_rpy)
+            target_rpy = np.array(
+                [self.roll_spin.value(), self.pitch_spin.value(), self.yaw_spin.value()]
+            )
+            target_rot = Rotation.from_euler("xyz", target_rpy)
 
             # Emit target for visualization (construct from 4x4 matrix)
             mat = np.eye(4)
@@ -301,7 +309,9 @@ class IKWidget(QWidget):
             seed = np.array([state.joints.get(j, 0.0) for j in self._joint_names])
 
             # Build bounds
-            bounds = [(self._joint_limits[j][0], self._joint_limits[j][1]) for j in self._joint_names]
+            bounds = [
+                (self._joint_limits[j][0], self._joint_limits[j][1]) for j in self._joint_names
+            ]
 
             def cost_fn(q):
                 """Cost = position error + orientation error."""
@@ -327,8 +337,9 @@ class IKWidget(QWidget):
                 return pos_err + 0.5 * angle_err
 
             # Optimize
-            result = minimize(cost_fn, seed, method='SLSQP', bounds=bounds,
-                              options={'maxiter': 100, 'ftol': 1e-6})
+            result = minimize(
+                cost_fn, seed, method="SLSQP", bounds=bounds, options={"maxiter": 100, "ftol": 1e-6}
+            )
 
             # Restore original state
             self._env.setState({name: float(val) for name, val in zip(self._joint_names, seed)})
@@ -346,6 +357,7 @@ class IKWidget(QWidget):
             self.status_label.setText(f"Error: {str(e)}")
             self.status_label.setStyleSheet("color: red;")
             import traceback
+
             traceback.print_exc()
 
     def set_target_from_fk(self, pose):
@@ -359,9 +371,10 @@ class IKWidget(QWidget):
 
             # Extract rotation as RPY
             from scipy.spatial.transform import Rotation
+
             rot_matrix = pose.linear
             rot = Rotation.from_matrix(rot_matrix)
-            rpy = rot.as_euler('xyz')
+            rpy = rot.as_euler("xyz")
 
             self.roll_spin.setValue(float(rpy[0]))
             self.pitch_spin.setValue(float(rpy[1]))
@@ -389,7 +402,8 @@ class IKWidget(QWidget):
             # Convert RPY to transform
             from scipy.spatial.transform import Rotation
             import tesseract_robotics.tesseract_common as tc
-            rot = Rotation.from_euler('xyz', [roll, pitch, yaw])
+
+            rot = Rotation.from_euler("xyz", [roll, pitch, yaw])
 
             # Create Isometry3d from 4x4 matrix
             mat = np.eye(4)
@@ -406,6 +420,7 @@ class IKWidget(QWidget):
             self.planning_status.setText(f"Error: {str(e)}")
             self.planning_status.setStyleSheet("color: red;")
             import traceback
+
             traceback.print_exc()
 
     def set_planning_status(self, message: str, success: bool = None):
@@ -459,7 +474,9 @@ class IKWidget(QWidget):
             roll_deg = np.rad2deg(roll)
             pitch_deg = np.rad2deg(pitch)
             yaw_deg = np.rad2deg(yaw)
-            self.current_tcp_rpy_label.setText(f"RPY (deg): {roll_deg:.2f}, {pitch_deg:.2f}, {yaw_deg:.2f}")
+            self.current_tcp_rpy_label.setText(
+                f"RPY (deg): {roll_deg:.2f}, {pitch_deg:.2f}, {yaw_deg:.2f}"
+            )
 
         except Exception as e:
             logger.debug(f"Failed to update current TCP pose: {e}")

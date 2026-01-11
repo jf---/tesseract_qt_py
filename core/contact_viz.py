@@ -1,4 +1,5 @@
 """Contact/collision results visualization."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -28,7 +29,9 @@ class ContactVisualizer:
                 actor.GetProperty().SetAmbient(0.0)
         self.highlighted_links.clear()
 
-    def visualize_contacts(self, contact_results, link_actors: dict[str, list[vtk.vtkActor]] = None):
+    def visualize_contacts(
+        self, contact_results, link_actors: dict[str, list[vtk.vtkActor]] = None
+    ):
         """
         Visualize contact results.
 
@@ -40,17 +43,17 @@ class ContactVisualizer:
 
         for contact in contact_results:
             # Contact points as spheres
-            if hasattr(contact, 'nearest_points') and len(contact.nearest_points) >= 2:
+            if hasattr(contact, "nearest_points") and len(contact.nearest_points) >= 2:
                 for pt in contact.nearest_points[:2]:
                     self._add_contact_point(pt)
 
             # Contact normal as arrow
-            if hasattr(contact, 'nearest_points') and hasattr(contact, 'normal'):
+            if hasattr(contact, "nearest_points") and hasattr(contact, "normal"):
                 if len(contact.nearest_points) >= 1:
                     self._add_contact_normal(contact.nearest_points[0], contact.normal)
 
             # Highlight colliding links
-            if link_actors and hasattr(contact, 'link_names') and len(contact.link_names) >= 2:
+            if link_actors and hasattr(contact, "link_names") and len(contact.link_names) >= 2:
                 for link_name in contact.link_names[:2]:
                     if link_name not in self.highlighted_links and link_name in link_actors:
                         self._highlight_link(link_name, link_actors[link_name])
@@ -73,7 +76,9 @@ class ContactVisualizer:
         self.renderer.AddActor(actor)
         self.contact_actors.append(actor)
 
-    def _add_contact_normal(self, point, normal, scale: float = 0.1, color: tuple = (0.2, 1.0, 0.2)):
+    def _add_contact_normal(
+        self, point, normal, scale: float = 0.1, color: tuple = (0.2, 1.0, 0.2)
+    ):
         """Add contact normal as arrow."""
         # Arrow source
         arrow = vtk.vtkArrowSource()
@@ -116,7 +121,9 @@ class ContactVisualizer:
         self.renderer.AddActor(actor)
         self.normal_actors.append(actor)
 
-    def _highlight_link(self, link_name: str, actors: list[vtk.vtkActor], color: tuple = (1.0, 0.3, 0.0)):
+    def _highlight_link(
+        self, link_name: str, actors: list[vtk.vtkActor], color: tuple = (1.0, 0.3, 0.0)
+    ):
         """Highlight link in collision."""
         # Store original colors
         original_colors = []

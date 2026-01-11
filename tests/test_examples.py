@@ -1,4 +1,5 @@
 """Smoke tests - examples must complete without error."""
+
 import pytest
 import sys
 from pathlib import Path
@@ -11,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 vtk_available = pytest.importorskip("vtk", reason="vtk not installed")
 tesseract_available = pytest.mark.skipif(
     not pytest.importorskip("tesseract_robotics", reason="tesseract not installed"),
-    reason="tesseract_robotics not installed"
+    reason="tesseract_robotics not installed",
 )
 
 
@@ -44,21 +45,24 @@ class TestExamples:
 
     def test_tool_path_demo(self):
         from examples.tool_path_demo import create_sample_paths, add_demo_paths
+
         assert callable(create_sample_paths)
         assert callable(add_demo_paths)
 
         # Actually run it
         paths = create_sample_paths()
-        assert 'spiral' in paths
-        assert 'segments' in paths
+        assert "spiral" in paths
+        assert "segments" in paths
 
     def test_workspace_demo(self):
         from examples.workspace_demo import visualize_workspace, visualize_workspace_simple
+
         assert callable(visualize_workspace)
         assert callable(visualize_workspace_simple)
 
     def test_fk_viz_demo(self):
         from examples.fk_viz_demo import demo_fk_viz
+
         assert callable(demo_fk_viz)
 
 
@@ -106,11 +110,13 @@ class TestTrajectoryPlayer:
     @pytest.fixture
     def qapp(self):
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance() or QApplication([])
         yield app
 
     def test_create_player(self, qapp):
         from widgets.trajectory_player import TrajectoryPlayerWidget
+
         w = TrajectoryPlayerWidget()
         assert w._frame_count == 0
         assert w.get_frame() == 0
@@ -137,11 +143,13 @@ class TestInfoPanel:
     @pytest.fixture
     def qapp(self):
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance() or QApplication([])
         yield app
 
     def test_create_panel(self, qapp):
         from widgets.info_panel import RobotInfoPanel
+
         p = RobotInfoPanel()
         assert p.name_label.text() == "Name: -"
 
@@ -175,11 +183,14 @@ class TestRotationConversion:
         from widgets.info_panel import rotation_matrix_to_rpy
 
         # 90 deg rotation about Z
-        R = np.array([
-            [0, -1, 0],
-            [1, 0, 0],
-            [0, 0, 1],
-        ], dtype=float)
+        R = np.array(
+            [
+                [0, -1, 0],
+                [1, 0, 0],
+                [0, 0, 1],
+            ],
+            dtype=float,
+        )
         roll, pitch, yaw = rotation_matrix_to_rpy(R)
         assert abs(yaw - np.pi / 2) < 1e-6
 
@@ -190,12 +201,14 @@ class TestPlotWidget:
     @pytest.fixture
     def qapp(self):
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance() or QApplication([])
         yield app
 
     def test_create_plot_widget(self, qapp):
         pytest.importorskip("pyqtgraph", reason="pyqtgraph not installed")
         from widgets.plot_widget import PlotWidget
+
         w = PlotWidget()
         w.add_joint("joint_1")
         w.add_joint("joint_2")

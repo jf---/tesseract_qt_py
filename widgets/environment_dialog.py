@@ -1,4 +1,5 @@
 """Load environment dialog and widget."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -60,7 +61,9 @@ class LoadEnvironmentWidget(QWidget):
         """Load default directory from QSettings."""
         settings = QSettings()
         settings.beginGroup("LoadEnvironmentWidget")
-        doc_locations = QStandardPaths.standardLocations(QStandardPaths.StandardLocation.DocumentsLocation)
+        doc_locations = QStandardPaths.standardLocations(
+            QStandardPaths.StandardLocation.DocumentsLocation
+        )
         default_doc = doc_locations[0] if doc_locations else ""
         self._default_directory = settings.value("default_directory", default_doc)
         settings.endGroup()

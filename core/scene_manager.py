@@ -1,4 +1,5 @@
 """VTK scene manager for Tesseract environments."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -68,7 +69,7 @@ class SceneManager:
                 # Set material color (API returns numpy array [r,g,b,a] in 0.7.1+)
                 if visual.material is not None and visual.material.color is not None:
                     c = visual.material.color
-                    if hasattr(c, 'r'):  # Old API
+                    if hasattr(c, "r"):  # Old API
                         actor.GetProperty().SetColor(c.r, c.g, c.b)
                         if c.a < 1.0:
                             actor.GetProperty().SetOpacity(c.a)
@@ -93,8 +94,8 @@ class SceneManager:
         if not self.link_actors:
             return None
 
-        xmin = ymin = zmin = float('inf')
-        xmax = ymax = zmax = float('-inf')
+        xmin = ymin = zmin = float("inf")
+        xmax = ymax = zmax = float("-inf")
 
         for actors in self.link_actors.values():
             for actor in actors:
@@ -106,7 +107,7 @@ class SceneManager:
                 zmin = min(zmin, bounds[4])
                 zmax = max(zmax, bounds[5])
 
-        if xmin == float('inf'):
+        if xmin == float("inf"):
             return None
         return (xmin, xmax, ymin, ymax, zmin, zmax)
 
@@ -129,7 +130,9 @@ class SceneManager:
 
                 # Update frame if visible (frames don't have visual origin)
                 if link_name in self.frame_actors:
-                    self.frame_actors[link_name].SetUserTransform(self._isometry_to_vtk(link_transform))
+                    self.frame_actors[link_name].SetUserTransform(
+                        self._isometry_to_vtk(link_transform)
+                    )
             except (KeyError, AttributeError):
                 pass
 
@@ -260,8 +263,8 @@ class SceneManager:
         """Create actor from mesh geometry."""
         try:
             # Try file path first
-            uri = str(geometry.getFilePath()) if hasattr(geometry, 'getFilePath') else None
-            scale = geometry.getScale() if hasattr(geometry, 'getScale') else None
+            uri = str(geometry.getFilePath()) if hasattr(geometry, "getFilePath") else None
+            scale = geometry.getScale() if hasattr(geometry, "getScale") else None
 
             if uri and uri.strip():
                 polydata = self._load_mesh_file(uri, scale)
@@ -273,8 +276,8 @@ class SceneManager:
                     return actor
 
             # Try getting mesh vertices/faces directly
-            vertices = geometry.getVertices() if hasattr(geometry, 'getVertices') else None
-            faces = geometry.getFaces() if hasattr(geometry, 'getFaces') else None
+            vertices = geometry.getVertices() if hasattr(geometry, "getVertices") else None
+            faces = geometry.getFaces() if hasattr(geometry, "getFaces") else None
 
             if vertices is not None and len(vertices) > 0:
                 polydata = self._vertices_faces_to_polydata(vertices, faces)
@@ -301,8 +304,8 @@ class SceneManager:
 
             for mesh in meshes:
                 # Each mesh has vertices and faces
-                vertices = mesh.getVertices() if hasattr(mesh, 'getVertices') else None
-                faces = mesh.getFaces() if hasattr(mesh, 'getFaces') else None
+                vertices = mesh.getVertices() if hasattr(mesh, "getVertices") else None
+                faces = mesh.getFaces() if hasattr(mesh, "getFaces") else None
 
                 if vertices is not None and len(vertices) > 0:
                     polydata = self._vertices_faces_to_polydata(vertices, faces)
@@ -657,7 +660,9 @@ class SceneManager:
         """Clear contact visualization."""
         self.contact_viz.clear()
 
-    def get_tcp_pose(self, joint_values: dict[str, float], tcp_link: str) -> tesseract_common.Isometry3d | None:
+    def get_tcp_pose(
+        self, joint_values: dict[str, float], tcp_link: str
+    ) -> tesseract_common.Isometry3d | None:
         """Get TCP pose from joint values via FK.
 
         Args:
@@ -679,9 +684,12 @@ class SceneManager:
             logger.debug(f"FK failed: {e}")
             return None
 
-    def show_tcp_marker(self, pose: tesseract_common.Isometry3d,
-                        radius: float = 0.02,
-                        color: tuple[float, float, float] = (1.0, 0.0, 1.0)):
+    def show_tcp_marker(
+        self,
+        pose: tesseract_common.Isometry3d,
+        radius: float = 0.02,
+        color: tuple[float, float, float] = (1.0, 0.0, 1.0),
+    ):
         """Display TCP position marker at pose.
 
         Args:
@@ -710,11 +718,14 @@ class SceneManager:
         self.renderer.AddActor(actor)
         self._fk_actors[marker_id] = [actor]
 
-    def show_fk_chain(self, joint_values: dict[str, float],
-                      base_link: str,
-                      tip_link: str,
-                      line_width: float = 3.0,
-                      color: tuple[float, float, float] = (0.0, 1.0, 1.0)):
+    def show_fk_chain(
+        self,
+        joint_values: dict[str, float],
+        base_link: str,
+        tip_link: str,
+        line_width: float = 3.0,
+        color: tuple[float, float, float] = (0.0, 1.0, 1.0),
+    ):
         """Visualize FK chain as lines between link origins.
 
         Args:
@@ -791,6 +802,7 @@ class SceneManager:
             for actor in self._fk_actors[viz_id]:
                 self.renderer.RemoveActor(actor)
             del self._fk_actors[viz_id]
+
     def sample_workspace(
         self,
         joint_names: list[str],

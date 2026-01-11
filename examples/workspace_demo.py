@@ -1,4 +1,5 @@
 """Demo workspace visualization."""
+
 import numpy as np
 
 

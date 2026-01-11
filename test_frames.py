@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Test coordinate frame visualization."""
+
 from __future__ import annotations
 
 import sys
